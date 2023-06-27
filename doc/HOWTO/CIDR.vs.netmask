@@ -1,0 +1,52 @@
+Edited excerpt from a private conversation.  For those who don't know what
+CIDR is, this should help:
+
+For IPv4 there are only 32 acceptable netmask / CIDR values (not 33):
+
+Netmask          CIDR  Addresses available
+---------------  ----  -------------------
+        0.0.0.0  /0    4,294,967,294
+      128.0.0.0  /1    2,147,483,646
+      192.0.0.0  /2    1,073,741,822
+      224.0.0.0  /3      536,870,910
+      240.0.0.0  /4      268,435,454
+      248.0.0.0  /5      134,217,726
+      252.0.0.0  /6       67,108,862
+      254.0.0.0  /7       33,554,430
+      255.0.0.0  /8       16,777,215
+    255.128.0.0  /9        8,388,606
+    255.192.0.0  /10       4,194,302
+    255.224.0.0  /11       2,097,150
+    255.240.0.0  /12       1,048,574
+    255.248.0.0  /13         524,286
+    255.252.0.0  /14         262,142
+    255.254.0.0  /15         131,071
+    255.255.0.0  /16          65,534
+  255.255.128.0  /17          32,766
+  255.255.192.0  /18          16,382
+  255.255.224.0  /19           8,190
+  255.255.240.0  /20           4,094
+  255.255.248.0  /21           2,046
+  255.255.252.0  /22           1,022
+  255.255.254.0  /23             510
+  255.255.255.0  /24             254
+255.255.255.128  /25             126
+255.255.255.192  /26              62
+255.255.255.224  /27              30
+255.255.255.240  /28              14
+255.255.255.248  /29               6
+255.255.255.252  /30               2
+255.255.255.255  /32               1
+
+Note the absence of 255.255.255.254 (CIDR /31).  This is not acceptable
+since it defines a network with a network address and a broadcast address,
+but no host addresses available.  While such a network might be usable for
+broadcast-only applications, it's probably not usable in most real-world
+situations.  For FTP, where we need a _host_ address, no host could
+possibly exist so the netmask / CIDR value makes no sense.
+
+Using netmasks, nonsense such as 255.128.0.1 is possible and even works as
+one would expect (with a lot of careful thought) on most Unix systems
+(provided you can set it; many command-level tools prevent it), but it
+makes for a VERY odd network architecture.
+

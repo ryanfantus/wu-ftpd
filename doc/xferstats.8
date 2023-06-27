@@ -1,0 +1,51 @@
+.\" manual page for xferstats
+.\" Vincent Renardias <vincent@ldsol.com>
+.TH XFERSTATS 8 "October 1999" "Debian Project" "WU-FTPD"
+.SH NAME
+xferstats \- displays FTP usage statistics
+.SH SYNOPSIS
+.B xferstats
+[-f <filename>] [-r] [-a] [-h] [-d] [-t] [-D <domain>] [-l <depth>] [-s <section>]
+.SH DESCRIPTION
+The
+.B xferstats
+command computes usage statistics of the local FTP service. It shows
+the current process information for each user logged into the FTP server.
+.SS OPTIONS
+.TP
+.I "\-a"
+Include anonymous users.
+.TP
+.I "\-d"
+Include report on domain traffic.
+.TP
+.I "\-D <domain>"
+Report only on traffic from <domain>.
+.TP
+.I "\-f <filename>"
+Use <filename> for the log file.
+.TP
+.I "\-h"
+Include report on hourly traffic.
+.TP
+.I "\-l <depth>"
+Depth of path detail for sections.
+.TP
+.I "\-r"
+Include real users.
+.TP
+.I "\-s <section>"
+Section (directory, path) to report on. For example `-s /pub' will report
+only on paths under /pub.
+.TP
+.I "\-t"
+Report on total traffic by section.
+.SH SEE ALSO
+.BR ftpcount(1), ftpwho(1), wu-ftpd(8)
+.SH AUTHORS
+This program comes with the wu-ftpd package, which is made by the WU-FTPD
+development group, reachable at <wuftpd-members@wu-ftpd.info>.
+.sp
+This manual page was written by Vincent Renardias <vincent@ldsol.com>
+for the Debian GNU/Linux wu-ftpd-academ package, and updated by Josip
+Rodin for wu-ftpd.

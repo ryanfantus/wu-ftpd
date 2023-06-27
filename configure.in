@@ -1,0 +1,1386 @@
+dnl use autoconf 2.13 or higher to generate the configure script
+
+dnl ============================================================================
+dnl First of all, definitions of our headers and lookups of generic programs...
+dnl ============================================================================
+AC_INIT
+AC_CONFIG_SRCDIR([src/ftpd.c])
+
+# configure is generated from configure.in using GNU autoconf. Please edit
+# configure.in for changes or submit the changes to the developers.
+#
+# Copyright (c) 1999-2003 WU-FTPD Development Group.  
+# All rights reserved.
+#  
+# Portions Copyright (c) 1980, 1985, 1988, 1989, 1990, 1991, 1993, 1994  
+#   The Regents of the University of California. 
+# Portions Copyright (c) 1993, 1994 Washington University in Saint Louis.  
+# Portions Copyright (c) 1996, 1998 Berkeley Software Design, Inc.  
+# Portions Copyright (c) 1989 Massachusetts Institute of Technology.  
+# Portions Copyright (c) 1998 Sendmail, Inc.  
+# Portions Copyright (c) 1983, 1995, 1996, 1997 Eric P.  Allman.  
+# Portions Copyright (c) 1997 by Stan Barber.  
+# Portions Copyright (c) 1997 by Kent Landfield.  
+# Portions Copyright (c) 1991, 1992, 1993, 1994, 1995, 1996, 1997  
+#   Free Software Foundation, Inc.    
+#  
+# Use and distribution of this software and its source code are governed   
+# by the terms and conditions of the WU-FTPD Software License ("LICENSE").  
+#  
+# If you did not receive a copy of the license, it may be obtained online  
+# at http://www.wu-ftpd.info/license.html.  
+#
+# $Id: configure.in,v 1.14 2016/03/26 21:21:36 wmaton Exp $
+#
+
+AC_CONFIG_HEADER(config.h src/config.h)
+AC_PREFIX_DEFAULT(/usr)
+AC_CANONICAL_TARGET([])
+AC_PROG_CC
+AC_ISC_POSIX
+AC_PROG_RANLIB
+AC_PROG_YACC
+AC_PROG_INSTALL
+AC_CHECK_PROGS(AR, ar gar, NO)
+if test $AR = NO; then
+  AC_MSG_ERROR([Cannot find ar or gar.])
+fi
+AC_SUBST(AR)
+AC_HEADER_STDC
+AC_HEADER_TIME
+
+dnl Quick hack: Let the source know we don't want stuff like
+dnl #ifdef LINUX...
+AC_DEFINE([AUTOCONF],[1],[Define for autoconf])
+
+dnl see if we support links...
+AC_MSG_CHECKING(if we can do hard links)
+ln configure src/link.tst 2>&5
+if test -x src/link.tst; then
+	CPLN="ln"
+	rm -f src/link.tst
+	AC_MSG_RESULT([yes - using ln])
+else
+	CPLN="cp"
+	AC_MSG_RESULT([no - using cp])
+fi
+AC_SUBST(CPLN)
+
+
+dnl ===========================================================================
+dnl Accepted arguments to ./configure...
+dnl ============================================================================
+AC_ARG_WITH(etc-dir, 
+    [  --with-etc-dir=PATH     read-only single-machine data in DIR [/etc]],
+    [ETCDIR=$with_etc_dir], [ETCDIR=/etc])
+AC_SUBST(ETCDIR)
+
+AC_ARG_WITH(pid-dir, 
+    [  --with-pid-dir=PATH     run/pid files [/var/run]],
+    [PIDDIR=$with_pid_dir], [PIDDIR=/var/run])
+AC_SUBST(PIDDIR)
+
+AC_ARG_WITH(log-dir, 
+    [  --with-log-dir=PATH     log files [/var/log]],
+    [LOGDIR=$with_log_dir], [LOGDIR=/var/log])
+AC_SUBST(LOGDIR)
+
+AC_ARG_ENABLE(upload,	 
+    [  --disable-upload        disable the UPLOAD keyword in ftpaccess],
+    [ upload=$enableval ], [ upload=yes ])
+
+AC_ARG_ENABLE(overwrite, 
+    [  --disable-overwrite     disable the OVERWRITE keyword in ftpaccess],
+    [ overwrite=$enableval ], [ overwrite=yes ])
+
+AC_ARG_ENABLE(hostxs,	 
+    [  --disable-hostxs        don't allow ALLOW/DENY keywords in ftpaccess],
+    [ hostxs=$enableval ], [ hostxs=yes ])
+
+AC_ARG_ENABLE(logfailed, 
+    [  --disable-logfailed     don't log failed login attempts],
+    [ logfailed=$enableval ], [ logfailed=yes ])
+
+AC_ARG_ENABLE(logtoomany,
+    [  --disable-logtoomany    don't log login attempts that failed because of limits],
+    [ logtoomany=$enableval ], [ logtoomany=yes ])
+
+AC_ARG_ENABLE(private,   
+    [  --enable-private        support private files (SITE GROUP/SITE GPASS)],
+    [ private=$enableval ], [ private=no ])
+
+AC_ARG_ENABLE(dnsretry,  
+    [  --disable-dnsretry      don't retry failed DNS lookups],
+    [ dnsretry=$enableval ], [ dnsretry=yes ])
+
+AC_ARG_ENABLE(anononly,  
+    [  --enable-anononly       allow only anonymous ftp connections],
+    [ anononly=$enableval ], [ anononly=no ])
+
+AC_ARG_ENABLE(autobuf,
+    [  --enable-autobuf        enable autobuf/auto tuning for bulk transfers],
+    [ autobuf=$enableval ], [ autobuf=no ])
+
+AC_ARG_ENABLE(delete,  
+    [  --disable-delete        deny deletion of files],
+    [ delete=$enableval ], [ delete=yes ])
+
+AC_ARG_ENABLE(ow-file,  
+    [  --disable-ow-file       deny overwriting of files],
+    [ ow_file=$enableval ], [ ow_file=yes ])
+
+AC_ARG_ENABLE(strict-homedir,  
+    [  --disable-strict-homedir  don't perform strict checking of home directory],
+    [ strict_homedir=$enableval ], [ strict_homedir=yes ])
+
+AC_ARG_ENABLE(site-umask,  
+    [  --disable-site-umask    don't support SITE UMASK],
+    [ site_umask=$enableval ], [ site_umask=yes ])
+
+AC_ARG_ENABLE(site-chmod,  
+    [  --disable-site-chmod    don't support SITE CHMOD],
+    [ site_chmod=$enableval ], [ site_chmod=yes ])
+
+AC_ARG_ENABLE(site-idle,  
+    [  --disable-site-idle     don't support SITE IDLE],
+    [ site_idle=$enableval ], [ site_idle=yes ])
+
+AC_ARG_ENABLE(site-exec,  
+    [  --enable-site-exec      permit SITE EXEC/SITE INDEX],
+    [ site_exec=$enableval ], [ site_exec=no ])
+
+AC_ARG_ENABLE(site-alias,  
+    [  --disable-site-alias    don't support SITE ALIAS],
+    [ site_alias=$enableval ], [ site_alias=yes ])
+
+AC_ARG_ENABLE(site-groups,  
+    [  --disable-site-groups   don't support SITE GROUP and SITE GPASS],
+    [ site_groups=$enableval ], [ site_groups=yes ])
+
+AC_ARG_ENABLE(site-cdpath,  
+    [  --disable-site-cdpath   don't support SITE CDPATH],
+    [ site_cdpath=$enableval ], [ site_cdpath=yes ])
+
+AC_ARG_ENABLE(checkmethod,  
+    [  --disable-checkmethod   don't support SITE CHECKMETHOD],
+    [ checkmethod=$enableval ], [ checkmethod=yes ])
+
+AC_ARG_ENABLE(checksum,  
+    [  --disable-checksum      don't support SITE CHECKSUM],
+    [ checksum=$enableval ], [ checksum=yes ])
+
+AC_ARG_ENABLE(site,  
+    [  --disable-site          don't support any SITE commands],
+    [ site=$enableval ], [ site=yes ])
+
+
+AC_ARG_ENABLE(paranoid,  
+    [  --enable-paranoid       disable some "questionable" features],
+    [ paranoid=$enableval ], [ paranoid=no ])
+
+AC_ARG_ENABLE(lastlog,
+    [  --disable-lastlog       disable lastlog logging],
+    [ lastlog=$enableval ], [ lastlog=yes ])
+
+AC_ARG_ENABLE(quota,	 
+    [  --enable-quota          add QUOTA support (if your OS supports it)],
+    [ quota=$enableval ], [ quota=no ])
+
+AC_ARG_ENABLE(pam,	 
+    [  --enable-pam            add PAM support (needs PAM library)],
+    [ pam=$enableval ], [ pam=no ])
+
+AC_ARG_ENABLE(skey,	 
+    [  --enable-skey           add S/KEY support (needs SKEY libraries)],
+    [ skey=$enableval ], [ skey=no ])
+
+AC_ARG_ENABLE(opie,	 
+    [  --enable-opie           add OPIE support (needs OPIE libraries)],
+    [ opie=$enableval ], [ opie=no ])
+
+if test $skey = "yes" -o $skey = "y"
+then
+  if test $opie = "yes" -o $skey = "y"
+  then
+    AC_MSG_ERROR([*** YOU SHOULD NOT HAVE BOTH SKEY AND OPIE DEFINED!!!!!])
+  fi
+fi
+
+AC_ARG_ENABLE(new-cd,    [  --disable-new-cd        new-cd causes "cd ~" to return to chroot-relative dir],
+	[ newcd=$enableval ], [ newcd=yes ])
+AC_ARG_ENABLE(chmod,	 [  --enable-chmod          allow ftp users to set SETUID/SETGID/STICKY bits],
+	[ chmod=$enableval ], [ chmod=no ])
+AC_ARG_ENABLE(rfc931,	 [  --enable-rfc931         do RFC931 lookups (more log information, but slower)],
+	[ rfc931=$enableval ], [ rfc931=no ])
+AC_ARG_ENABLE(ratios,    [  --enable-ratios         compile in support for upload-download ratios ],
+       [ ratio=$enableval ], [ ratio=no ])
+AC_ARG_ENABLE(passwd,    [  --enable-passwd         support alternative passwd/shadow files ],
+	[ passwd=$enableval ], [ passwd=no ])
+AC_ARG_ENABLE(daemon,	 [  --disable-daemon        don't allow running as standalone daemon],
+	[ daemon=$enableval ], [ daemon=yes ])
+AC_ARG_ENABLE(map-chdir, [  --disable-map-chdir     don't keep track of user's path changes],
+	[ mapchdir=$enableval ], [ mapchdir=yes ])
+AC_ARG_ENABLE(throughput,[  --disable-throughput    don't keep track of user's throughput],
+	[ throughput=$enableval ], [ throughput=yes ])
+AC_ARG_ENABLE(count,	 [  --disable-count         don't keep track of bytes for statistics],
+	[ count=$enableval ], [ count=yes ])
+AC_ARG_ENABLE(newlines,	 [  --disable-newlines      suppress some extra blank lines],
+	[ newlines=$enableval ], [ newlines=yes ])
+AC_ARG_ENABLE(crackers,  [  --enable-crackers       don't wait for password if the username doesn't exist],
+	[ crackers=$enableval ], [ crackers=no ])
+AC_ARG_ENABLE(verbose,	 [  --disable-verbose       disable verbose error logging],
+	[ verbose=$enableval ], [ verbose=yes ])
+AC_ARG_ENABLE(noop,      [  --enable-noop           NOOP command resets idle timeout],
+	[ noop=$enableval ], [ noop=no ])
+AC_ARG_ENABLE(virtual,   [  --disable-virtual       don't support virtual servers],
+	[ virtual=$enableval ], [ virtual=yes ])
+AC_ARG_ENABLE(closedvirt,[  --disable-closedvirt    allow guests to log in to a virtual server],
+	[ closedvirt=$enableval ], [ closedvirt=yes ])
+AC_ARG_ENABLE(port,	 [  --disable-port          don't allow port mode],
+	[ port=$enableval ], [ port=yes ])
+AC_ARG_ENABLE(pasv,	 [  --disable-pasv          don't allow passive mode],
+	[ pasv=$enableval ], [ pasv=yes ])
+AC_ARG_ENABLE(plsm,	 [  --disable-plsm          disable PID lock sleep messages (for busy sites)],
+	[ plsm=$enableval ], [ plsm=yes ])
+AC_ARG_ENABLE(pasvip,    [  --disable-pasvip        don't require require same IP for passive connections],
+	[ pasvip=$enableval ], [ pasvip=yes ])
+AC_ARG_ENABLE(anonymous, [  --disable-anonymous     don't allow anonymous ftp access],
+	[ anonymous=$enableval ], [ anonymous=yes ])
+AC_ARG_ENABLE(ls,	 [  --enable-ls             use the internal ls (EXPERIMENTAL)],
+	[ ls=$enableval ], [ ls=no ])
+AC_ARG_ENABLE(numericuid,[  --disable-numericuid    internal ls displays UID instead of username (faster)],
+	[ numericuid=$enableval ], [ numericuid=yes ])
+AC_ARG_ENABLE(hidesetuid,[  --disable-hidesetuid    show setuid/setgid bits in internal ls],
+	[ hidesetuid=$enableval ], [ hidesetuid=yes ])
+AC_ARG_ENABLE(mail,      [  --disable-mail          don't allow mail on upload],
+	[ mail=$enableval ], [ mail=yes ])
+AC_ARG_WITH(base-homedir,	 [  --with-base-homedir=path  path under which users home directories must reside],
+	[ base_homedir=$withval ], [ base_homedir=no ])
+AC_ARG_WITH(alt-homedir,	 [  --with-alt-homedir=path  directory to use if home fails strict or base tests],
+	[ alt_homedir=$withval ], [ alt_homedir=no ])
+AC_ARG_WITH(bufsize,	 [  --with-bufsize=x        set buffer size to x],
+	[ bufsize=$withval ], [ bufsize=no ])
+AC_ARG_WITH(backlog,	 [  --with-backlog=x        number of incoming processes to backlog in daemon mode],
+	[ backlog=$withval ], [ backlog=100 ])
+AC_ARG_WITH(facility,  [  --with-facility=x       use syslog facility x for syslog],
+    [ facility=$withval ], [ facility=no ])
+AC_ARG_ENABLE(nlst-dirs, [  --enable-nlst-dirs      allow NLST to show directories, can break mget],
+	[ nlstdirs=$enableval ], [ nlstdirs=no ])
+
+LIBS=""
+
+dnl ===========================================================================
+dnl Checks for some system calls/headers...
+dnl ============================================================================
+AC_MSG_CHECKING([for glibc 2.2 style large file support])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _GNU_SOURCE 1
+#define _FILE_OFFSET_BITS 64
+#include <features.h>
+#include <sys/stat.h>
+#include <stddef.h>]], [[ struct stat64 s;
+  stat(NULL, &s); ]])],[result=yes],[result=no])
+AC_MSG_RESULT([$result])
+if test "$result" = "yes"; then
+	AC_DEFINE([_GNU_SOURCE], [1], [define for GNU source])
+	AC_DEFINE([_FILE_OFFSET_BITS], [64], [set file offset for 64 bits])
+fi
+
+AC_CHECK_HEADERS(dirent.h regex.h shadow.h security/pam_appl.h opie.h skey.h \
+  syslog.h sys/syslog.h fcntl.h mntent.h stdlib.h unistd.h glob.h grp.h \
+  ndir.h sys/dir.h sys/ndir.h string.h vmsdir.h sys/systeminfo.h \
+  bsd/bsd.h sys/param.h values.h limits.h sys/types.h sys/mntent.h \
+  sys/mnttab.h paths.h features.h login.h lastlog.h utmp.h)
+AC_CHECK_FUNCS(dirfd fchdir flock ftw getcwd getdtablesize pstat lstat \
+  vprintf snprintf regexec regex fgetspent usercmp getusershell setuid vsnprintf \
+  strcasestr strdup strerror strsep strstr syslog glob strcasecmp \
+  strlcpy strlcat \
+  strncasecmp sigprocmask quotactl getrlimit sysconf setsid memmove \
+  strtoul mkstemp mktemp)
+AC_CHECK_FUNCS(seteuid setreuid setresuid, break)
+AC_CHECK_FUNCS(setegid setregid setresgid, break)
+
+AC_MSG_CHECKING(for strcasestr prototype)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _GNU_SOURCE 1
+#include <features.h>
+#include <string.h>
+void strcasestr(int s);]], [[ return 0; ]])],[result=no],[result=yes])
+AC_MSG_RESULT($result)
+if test "$result" = "yes"; then
+	AC_DEFINE([HAVE_STRCASESTR_PROTOTYPE], [1], [have strcasestr])
+fi
+
+AC_MSG_CHECKING(for strlcpy prototype)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _GNU_SOURCE 1
+#include <features.h>
+#include <string.h>
+void strlcpy(int s);]], [[ return 0; ]])],[result=no],[result=yes])
+AC_MSG_RESULT($result)
+if test "$result" = "yes"; then
+	AC_DEFINE([HAVE_STRLCPY_PROTOTYPE], [1], [have strlcpy])
+fi
+
+AC_MSG_CHECKING(for strlcat prototype)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#define _GNU_SOURCE 1
+#include <features.h>
+#include <string.h>
+void strlcat(int s);]], [[ return 0; ]])],[result=no],[result=yes])
+AC_MSG_RESULT($result)
+if test "$result" = "yes"; then
+	AC_DEFINE([HAVE_STRLCAT_PROTOTYPE], [1], [have strlcat])
+fi
+
+AC_CHECK_LIB(crypt, crypt, [result=yes], [result=no])
+if test $result = yes; then
+	LIBS="$LIBS -lcrypt"
+fi
+AC_CHECK_LIB(bsd, vfork, [result=yes], [result=no])
+if test $result = yes; then
+	LIBS="$LIBS -lbsd"
+fi
+AC_CHECK_LIB(s, getconfattr, [result=yes], [result=no])
+if test $result = yes; then
+	LIBS="$LIBS -ls"
+fi
+USENSL=no
+AC_CHECK_LIB(socket,socket,[result=yes],[result=no])
+if test $result = yes; then
+	LIBS="$LIBS -lsocket"
+else
+	AC_CHECK_LIB(socket,socket,[result=yes],[result=no],[-lnsl])
+	if test $result = yes; then
+		LIBS = "$LIBS -lsocket -lnsl"
+		USENSL=yes
+	else
+		AC_CHECK_LIB(socket,connect,[result=yes],[result=no])
+		if test $result = yes; then
+			LIBS="$LIBS -lsocket"
+		else
+			AC_CHECK_LIB(socket,connect,[result=yes],[result=no],[-lnsl])
+			if test $result = yes; then
+				LIBS="$LIBS -lsocket -lnsl"
+				USENSL=yes
+			fi
+		fi
+	fi
+fi
+if test "x$USENSL" != "xyes"; then
+	AC_CHECK_LIB(nsl,inet_addr,[result=yes],[result=no])
+	if test $result = yes; then
+		LIBS="$LIBS -lnsl"
+	fi
+fi
+
+AC_MSG_CHECKING(for sys_siglist)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <signal.h>
+#include <stdio.h>]], [[ puts(sys_siglist[0]); ]])],[result=yes],[result=no])
+AC_MSG_RESULT($result)
+if test "$result" = "yes"; then
+	AC_DEFINE([HAVE_SIGLIST], [1], [have siglist])
+fi
+
+AC_MSG_CHECKING(type of qsort)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <stdlib.h>
+extern void qsort();]], [[  ]])],[result=void],[result=int])
+AC_MSG_RESULT($result)
+if test "$result" = "void"; then
+	AC_DEFINE([QSORT_IS_VOID], [1], [have a valid qsort])
+fi
+
+AC_MSG_CHECKING(how to determine bytesize)
+if test "$ac_cv_header_bsd_bsd_h" = "yes"; then
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <bsd/bsd.h> ]], [[ int i=NBBY ]])],[NBBY=NBBY],[NBBY=8])
+else
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/param.h> ]], [[ int i=NBBY ]])],[NBBY=NBBY],[NBBY=8])
+fi
+if test "$NBBY" = "8"; then
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <values.h> ]], [[ int i=BITSPERBYTE ]])],[NBBY=BITSPERBYTE],[NBBY=8])
+	if test "$NBBY" = "8"; then
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <limits.h> ]], [[ int i=CHAR_BIT ]])],[NBBY=CHAR_BIT],[NBBY=8])
+		if test "$NBBY" != "8"; then
+			AC_DEFINE([NEED_LIMITS_H], [1], [need limits.h])
+		else
+			AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <sys/types.h> ]], [[ int i=NBBY ]])],[NBBY=NBBY],[NBBY=8])
+		fi
+	else
+		AC_DEFINE([NEED_VALUES_H], [1], [need values.h])
+	fi
+else
+	if test "$ac_cv_header_bsd_bsd_h" = "yes"; then
+		AC_DEFINE([NEED_BSD_BSD_H], [1], [need bsd_bsd.h])
+	else
+		AC_DEFINE([NEED_SYS_PARAM_H], [1], [need sys-param.h])
+	fi
+fi
+if test "$NBBY" = "8"; then
+	AC_MSG_RESULT([cannot be determined - assuming 8])
+else
+	AC_MSG_RESULT($NBBY)
+fi
+if test "$NBBY" != "NBBY"; then
+	AC_DEFINE_UNQUOTED([NBBY], [$NBBY], [set NBBY])
+fi
+
+AC_MSG_CHECKING([if openlog requires 3 arguments])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#ifdef HAVE_SYSLOG_H
+#include <syslog.h>
+#endif
+#ifdef HAVE_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif]], [[ openlog("",0,0) ]])],[result=yes],[result=no])
+AC_MSG_RESULT($result)
+if test "$result" = "yes"; then
+	AC_MSG_CHECKING([which facility openlog understands])
+	if test "$facility" != "no"; then
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#ifdef HAVE_SYSLOG_H
+#include <syslog.h>
+#endif
+#ifdef HAVE_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif]], [[ openlog("",0,$facility) ]])],[result=yes],[result=no])
+		if test "$result" = "yes"; then
+			FACILITY="$facility"
+		fi
+	fi
+	if test "x$FACILITY" = "x"; then
+		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#ifdef HAVE_SYSLOG_H
+#include <syslog.h>
+#endif
+#ifdef HAVE_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif]], [[ openlog("",0,LOG_FTP) ]])],[result=yes],[result=no])
+		if test "$result" = "yes"; then
+			FACILITY="LOG_FTP"
+		else
+			AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#ifdef HAVE_SYSLOG_H
+#include <syslog.h>
+#endif
+#ifdef HAVE_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif]], [[ openlog("",0,LOG_DAEMON) ]])],[result=yes],[result=no])
+			if test "$result" = "yes"; then
+				FACILITY="LOG_DAEMON"
+			else
+				AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#ifdef HAVE_SYSLOG_H
+#include <syslog.h>
+#endif
+#ifdef HAVE_SYS_SYSLOG_H
+#include <sys/syslog.h>
+#endif]], [[ openlog("",0,LOG_LOCAL7)]])],[result=yes],[result=no])
+				if test "$result" = "yes"; then
+					FACILITY="LOG_LOCAL7"
+				fi
+			fi
+		fi
+	fi
+	AC_MSG_RESULT($FACILITY)
+	AC_DEFINE_UNQUOTED([FACILITY], [$FACILITY], [logging facility])
+fi
+
+AC_MSG_CHECKING([type of getmntent function])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <stdio.h>
+#include <unistd.h>
+#ifdef HAVE_MNTENT_H
+#include <mntent.h>
+#endif
+#ifdef HAVE_SYS_MNTENT_H
+#include <sys/mntent.h>
+#endif
+#ifdef HAVE_SYS_MNTTAB_H
+#include <sys/mnttab.h>
+#endif
+#include <unistd.h>]], [[ (void) getmntent(0) ]])],[result=new-style],[result=old-style])
+AC_MSG_RESULT($result)
+if test "$result" = "old-style"; then
+	AC_DEFINE([HAS_OLDSTYLE_GETMNTENT], [1], [have getmntent])
+fi
+
+dnl some systems (FreeBSD 3) require time.h to be included before utmp.h :/
+AC_MSG_CHECKING(if there is a ut_host field in the utmp structure)
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#ifdef TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+#include <utmp.h>]], [[struct utmp ut; puts(ut.ut_host);]])],[result=yes],[result=no])
+if test "$result" = "yes"; then
+  AC_DEFINE([HAVE_UT_UT_HOST], [1], [have ut.ut_host])
+fi
+AC_MSG_RESULT($result)
+
+AC_MSG_CHECKING([if there is a ut_exit.e_termination field in the utmp structure])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#ifdef TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+#include <utmp.h>]], [[struct utmp ut; ut.ut_exit.e_termination=0;]])],[result=yes],[result=no])
+if test "$result" = "yes"; then
+	AC_DEFINE([HAVE_UT_UT_EXIT_E_TERMINATION], [1], [have ut.ut_exit.e_termination])
+fi
+AC_MSG_RESULT($result)
+
+AC_MSG_CHECKING([if there is a pw_expire field in the pw structure])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <pwd.h>]], [[ struct passwd *p; void *a=(void *)p->pw_expire; ]])],[result=yes],[result=no])
+if test "$result" = "yes"; then
+  AC_DEFINE([HAS_PW_EXPIRE], [1], [have pw_expire])
+fi
+AC_MSG_RESULT($result)
+
+AC_MSG_CHECKING([if there is a st_blksize field in the stat structure])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/stat.h>]], [[ struct stat *s; int a=(int)s->st_blksize; ]])],[result=yes],[result=no])
+if test "$result" = "yes"; then
+  AC_DEFINE([HAVE_ST_BLKSIZE], [1], [st_blksize])
+fi
+AC_MSG_RESULT($result)
+
+AC_MSG_CHECKING([how to printf gr_gid])
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
+#include <grp.h>
+int main(int argc, char **argv) {
+  struct group *grent;
+  if(sizeof(grent->gr_gid)<=4)
+    return 0;
+  return 1;
+}]])],[ result="u"
+AC_DEFINE_UNQUOTED([GR_GID_FORMAT], ["$result"], [have GID gr_gid struct])
+AC_MSG_RESULT(gr_gid is just a long - using %u)],[ result="no" ],[ result="no" ])
+if test $result = "no"; then
+  AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+  int main(int argc, char **argv) {
+    if(printf("%qd",(long long) 1)==1)
+      return 0;
+    return 1;
+  }]])],[ result="qd" ],[ result="no" ],[ result="no"])
+  if test $result = "no"; then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+    int main(int argc, char **argv) {
+      if(printf("Ld",(long long) 1)==1)
+        return 0;
+      return 1;
+    }]])],[ result="Ld" ],[ result="no" ],[ result="no" ])
+    if test $result = "no"; then
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+      int main(int argc, char **argv) {
+        if(printf("lld",(long long) 1)==1)
+          return 0;
+        return 1;
+      }]])],[ result="lld" ],[ result="no" ],[ result="no" ])
+      if test $result = "no"; then
+        AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+        int main(int argc, char **argv) {
+          if(printf("ld",(long long) 1)==1)
+            return 0;
+          return 1;
+        }]])],[ result="ld" ],[ result="d" ],[ result="d" ])
+      fi
+    fi
+  fi
+  AC_DEFINE_UNQUOTED([GR_GID_FORMAT], ["$result"], [GID format])
+  AC_MSG_RESULT([%$result])
+fi
+
+AC_MSG_CHECKING([how to printf pw_uid])
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <sys/types.h>
+#include <pwd.h>
+int main(int argc, char **argv) {
+  struct passwd *pwent;
+  if(sizeof(pwent->pw_uid)<=4)
+    return 0;
+  return 1;
+}]])],[ result="u"
+AC_DEFINE_UNQUOTED([PW_UID_FORMAT], ["$result"], [have UID format])
+AC_MSG_RESULT(uid_t is just a long - using %u)],[ result="no" ],[ result="no" ])
+if test $result = "no"; then
+  AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+  int main(int argc, char **argv) {
+    if(printf("%qd",(long long) 1)==1)
+      return 0;
+    return 1;
+  }]])],[ result="qd" ],[ result="no" ],[ result="no"])
+  if test $result = "no"; then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+    int main(int argc, char **argv) {
+      if(printf("Ld",(long long) 1)==1)
+        return 0;
+      return 1;
+    }]])],[ result="Ld" ],[ result="no" ],[ result="no" ])
+    if test $result = "no"; then
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+      int main(int argc, char **argv) {
+        if(printf("lld",(long long) 1)==1)
+          return 0;
+        return 1;
+      }]])],[ result="lld" ],[ result="no" ],[ result="no" ])
+      if test $result = "no"; then
+        AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+        int main(int argc, char **argv) {
+          if(printf("ld",(long long) 1)==1)
+            return 0;
+          return 1;
+        }]])],[ result="ld" ],[ result="d" ],[ result="d" ])
+      fi
+    fi
+  fi
+  AC_DEFINE_UNQUOTED([PW_UID_FORMAT], ["$result"], [UID format])
+  AC_MSG_RESULT(%$result)
+fi
+
+AC_MSG_CHECKING(how to printf an off_t)
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <sys/stat.h>
+int main(int argc, char **argv) {
+  if(sizeof(off_t)<=4)
+    return 0;
+  return 1;
+}]])],[ result="u"
+AC_DEFINE_UNQUOTED([L_FORMAT], ["$result"], [checked how to printf an off_t])
+AC_MSG_RESULT(off_t is just a long - using %u)],[ result="no" ],[ result="no" ])
+if test $result = "no"; then
+  AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+  int main(int argc, char **argv) {
+    char tstr[8];
+    if(sprintf(tstr, "%qd",(long long) 1)==1)
+      return 0;
+    return 1;
+  }]])],[ result="qd" ],[ result="no" ],[ result="no"])
+  if test $result = "no"; then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+    int main(int argc, char **argv) {
+      char tstr[8];
+      if(sprintf(tstr, "Ld",(long long) 1)==1)
+        return 0;
+      return 1;
+    }]])],[ result="Ld" ],[ result="no" ],[ result="no" ])
+    if test $result = "no"; then
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+      int main(int argc, char **argv) {
+        char tstr[8];
+        if(sprintf(tstr, "lld",(long long) 1)==1)
+          return 0;
+        return 1;
+      }]])],[ result="lld" ],[ result="no" ],[ result="no" ])
+      if test $result = "no"; then
+        AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+        int main(int argc, char **argv) {
+          char tstr[8];
+          if(sprintf(tstr, "ld",(long long) 1)==1)
+            return 0;
+          return 1;
+        }]])],[ result="ld" ],[ result="d" ],[ result="d" ])
+      fi
+    fi
+  fi
+  AC_DEFINE_UNQUOTED([L_FORMAT], ["$result"], [how to printf an off_t otherwise])
+  AC_MSG_RESULT(using %$result)
+fi
+AC_MSG_CHECKING(how to printf a time_t)
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#ifdef HAVE_STDLIB_H
+#include <stdlib.h>
+#endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#ifdef TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+int main(int argc, char **argv) {
+  if(sizeof(time_t)<=4)
+    return 0;
+  return 1;
+}]])],[ result="u"
+AC_DEFINE_UNQUOTED([T_FORMAT], ["$result"], [checking time_t])
+AC_MSG_RESULT(time_t is just a long - using %u)],[ result="no" ],[ result="no" ])
+if test $result = "no"; then
+  AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+  int main(int argc, char **argv) {
+    if(printf("%qd",(long long) 1)==1)
+      return 0;
+    return 1;
+  }]])],[ result="qd" ],[ result="no" ],[ result="no"])
+  if test $result = "no"; then
+    AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+    int main(int argc, char **argv) {
+      if(printf("Ld",(long long) 1)==1)
+        return 0;
+      return 1;
+    }]])],[ result="Ld" ],[ result="no" ],[ result="no" ])
+    if test $result = "no"; then
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+      int main(int argc, char **argv) {
+        if(printf("lld",(long long) 1)==1)
+          return 0;
+        return 1;
+      }]])],[ result="lld" ],[ result="no" ],[ result="no" ])
+      if test $result = "no"; then
+        AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+        int main(int argc, char **argv) {
+          if(printf("ld",(long long) 1)==1)
+            return 0;
+          return 1;
+        }]])],[ result="ld" ],[ result="d" ],[ result="d" ])
+      fi
+    fi
+  fi
+  AC_DEFINE_UNQUOTED([T_FORMAT], ["$result"], [other time_t handled this way])
+  AC_MSG_RESULT(%$result)
+fi
+
+AC_MSG_CHECKING(for large UID support)
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <pwd.h>
+#include <sys/types.h>
+int main(int argc, char **argv) {
+  if(sizeof(uid_t)>=4)
+    return 0;
+  return 1;
+}]])],[ long_uid=yes ],[ long_uid=no ],[ long_uid=yes ])
+AC_MSG_RESULT($long_uid)
+if test "$long_uid" = "yes"; then
+  AC_DEFINE([LONG_UID], [1], [have large UID support])
+fi
+
+AC_ARG_ENABLE(gssapi,
+   [  --enable-gssapi         enable GSSAPI security extensions],
+   [ enable_gssapi=$enableval ], [ enable_gssapi=no ])
+
+AC_ARG_ENABLE(mit-gssapi,
+   [  --enable-mit-gssapi     Try to find the GSSAPI libraries from the MIT Kerberos distribution (NO)],
+   [ mit_gssapi=$enableval enable_gssapi=yes],
+   [ mit_gssapi=no ])
+
+AC_ARG_WITH(gssapi-dir,
+   [  --with-gssapi-dir=PATH  location of GSSAPI (/usr) ],
+   [ GSSAPIDIR=$withval enable_gssapi=yes ])
+
+if test -n "$GSSAPIDIR"; then
+      LDFLAGS="-L$GSSAPIDIR/lib" 
+      if test "$CC" = gcc ; then
+          GSSLDFLAGS="$LDFLAGS -Wl,-R $GSSAPIDIR/lib"
+      else
+          GSSLDFLAGS="$LDFLAGS -R$GSSAPIDIR/lib"
+      fi
+      CPPFLAGS="$CPPFLAGS -I$GSSAPIDIR/include"
+      AC_SUBST(GSSLDFLAGS)
+fi
+
+if test "$enable_gssapi" = yes ; then
+   AC_CHECK_HEADERS(gssapi/gssapi.h,
+       [gssapi_header_found=yes], [gssapi_header_found=no])
+fi
+
+if test "$gssapi_header_found" = yes -a "$enable_gssapi" = yes ; then
+   if test "$mit_gssapi" = no ; then
+       AC_CHECK_LIB(gss, gss_accept_sec_context,
+                    [ AC_DEFINE([USE_GSS], [1], [use GSS]) GSSLIBS="$GSSLIBS -lgss"],
+                    AC_MSG_NOTICE([Could not find GSSAPI library -lgss]))
+       if test "$ac_cv_header_gssapi_gssapi_ext_h" = yes ; then
+           if test "$CC" = gcc ; then
+               AC_DEFINE([NEED_SYSTEM_GSSAPI_HEADER], [1], [have gssapi.h])
+               AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include "/usr/include/gssapi/gssapi.h" ]], [[ gss_OID oid = GSS_C_NT_HOSTBASED_SERVICE; ]])],[AC_DEFINE([HAVE_GSS_C_NT_HOSTBASED_SERVICE], [1], [have gssapi/gssapi.h])],[])
+           else
+               AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <gssapi/gssapi.h> ]], [[ gss_OID oid = GSS_C_NT_HOSTBASED_SERVICE; ]])],[AC_DEFINE([HAVE_GSS_C_NT_HOSTBASED_SERVICE], [1], [have host-based gssapi.h NT])],[])
+           fi
+       fi
+   fi
+   if test "$ac_cv_lib_gss_gss_accept_sec_context" = "no" -o \
+           "$mit_gssapi" = "yes" ; then
+       AC_CHECK_LIB(gssapi_krb5, gss_accept_sec_context,
+                   [ AC_DEFINE([USE_GSS], [1], [have gssapi_krb5]) 
+                     GSSLIBS="$GSSLIBS -lgssapi_krb5 -lkrb5 -lk5crypto -lcom_err" ],
+                   AC_MSG_NOTICE([Could not find MIT GSSAPI libraries try again with --with-gssapi-dir=PATH]), [-lkrb5 -lk5crypto -lcom_err])
+       AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[ #include <gssapi/gssapi.h> ]], [[ gss_OID oid = GSS_C_NT_HOSTBASED_SERVICE; ]])],[AC_DEFINE([HAVE_GSS_C_NT_HOSTBASED_SERVICE], [1], [have gssapi/gssapi.h])],[])
+   fi
+
+   if test "$ac_cv_lib_gss_gss_accept_sec_context" = "yes" -o \
+           "$ac_cv_lib_gssapi_krb5_gss_accept_sec_context" = "yes" ; then
+      AC_CHECK_FUNC(strlcat, AC_DEFINE([HAVE_STRLCAT], [1], [have strlcat]))
+      SAVELIBS="$LIBS"
+      LIBS="$LIBS $GSSLIBS"
+      AC_CHECK_FUNC(__gss_get_mech_type, AC_DEFINE([HAVE_GSS_GET_MECH_TYPE], [1], [have __gss_get_mech_type]))
+      LIBS="$SAVELIBS"
+      AC_SUBST(GSSLIBS)
+      AC_SUBST(GSSLDFLAGS)
+   fi
+fi
+
+AC_ARG_ENABLE(tls, [  --enable-tls            enable TLS security],
+        [ enable_tls=$enableval ], [ enable_tls=no ])
+
+AC_ARG_WITH(openssl-dir,
+    [  --with-openssl-dir=PATH location of OpenSSL [/usr/local/ssl]],
+    OPENSSLDIR=$withval, OPENSSLDIR=/usr/local/ssl)
+
+AC_ARG_ENABLE(insecure, [  --disable-insecure      force TLS security for binary],
+        [ enable_insecure=$enableval ], [ enable_insecure=yes ])
+
+AC_ARG_ENABLE(tls-debug, [  --enable-tls-debug      enable TLS debug],
+        [ enable_tls_debug=$enableval ], [ enable_tls_debug=no ])
+
+if test "$enable_insecure" = no; then
+   AC_DEFINE([FORCE_TLS], [1], [force TLS])
+fi
+
+if test "$enable_tls" = yes -o "$enable_insecure" = no ; then
+
+  if test -n "$OPENSSLDIR"; then
+    LDFLAGS="$LDFLAGS -L$OPENSSLDIR/lib"
+    CPPFLAGS="$CPPFLAGS -I$OPENSSLDIR/include"
+  fi
+
+  AC_SUBST(OPENSSLDIR)
+
+  # look for OpenSSL libraries
+  AC_CHECK_LIB(ssl, SSL_accept, LIBS="$LIBS -lssl",
+        AC_MSG_ERROR(Could not find OpenSSL library (libssl.a). Try again using --with-openssl-dir=DIR), -lcrypto)
+  AC_CHECK_LIB(crypto, X509_STORE_load_locations, LIBS="$LIBS -lcrypto",
+        AC_MSG_ERROR(Could not find OpenSSL library (libcrypto.a). Try again using --with-openssl-dir=DIR))
+
+  AC_DEFINE([USE_TLS], [1], [have ssl])
+
+  if test "$enable_tls_debug" = yes ; then
+     AC_DEFINE([TLS_DEBUG], [1], [enable TLS debugging])
+  fi
+
+fi
+
+# For the stuff from Pete Runestig
+#  modified to work with an unpatched autoconf !
+
+# Test how well snprintf() behaves
+AC_MSG_CHECKING([how well snprintf() behaves])
+AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+int main() {
+        char buf[3]; int r;
+        r = snprintf(buf, 3, "123");
+        return 3 == r ? 0 : -1;
+    }]])],[snp_ok=yes],[snp_ok=no],[snp_ok=no])
+if test "$snp_ok" = yes; then
+   AC_MSG_RESULT([ok])
+   AC_DEFINE([SNPRINTF_OK], [1], [have a good snprintf])
+else
+   AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+   int main() {
+           char buf[3]; int r;
+           r = snprintf(buf, 3, "123");
+           return 2 == r ? 0 : -1;
+       }]])],[snp_halfbroken=yes],[snp_halfbroken=no],[snp_halfbroken=no])
+   if test "$snp_halfbroken" = yes; then
+      AC_MSG_RESULT([half broken])
+      AC_DEFINE([SNPRINTF_HALFBROKEN], [1], [snprintf half broken])
+   else
+      AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
+      int main() {
+              char buf[3]; int r;
+              r = snprintf(buf, 3, "123");
+              return r < 0 ? 0 : -1;
+          }]])],[snp_broken=yes],[snp_broken=no],[snp_broken=no])
+
+      if test "$snp_broken" = yes; then
+         AC_MSG_RESULT([broken])
+         AC_DEFINE([SNPRINTF_BROKEN], [1], [have broken snprintf])
+      else
+         AC_MSG_ERROR([can't decide it, exiting!])
+      fi
+   fi
+fi
+
+AC_MSG_CHECKING([whether to enable ipv6])
+AC_ARG_ENABLE(ipv6,      [  --enable-ipv6           enable ftp IPv6 extensions],
+[ case "$enableval" in
+	no)
+		AC_MSG_RESULT(no)
+		ipv6=no
+		;;
+	*)
+		AC_MSG_RESULT(yes)
+		ipv6=yes
+		;;
+	esac ],
+	AC_RUN_IFELSE([AC_LANG_SOURCE([[ /* AF_INET6 avalable check */
+#include <sys/types.h>
+#include <sys/socket.h>
+main()
+{
+ if (socket(AF_INET6, SOCK_STREAM, 0) < 0)
+   exit(1);
+ else
+   exit(0);
+}
+]])],[AC_MSG_RESULT(yes)
+  AC_DEFINE([ENABLE_IPV6], [1], [enable IPv6])
+  ipv6=yes],[AC_MSG_RESULT(no)
+  ipv6=no],[AC_MSG_RESULT(no)
+  ipv6=no
+]))
+
+dnl ===========================================================================
+dnl Checks for specific details of IPv6 implementation
+dnl ============================================================================
+
+if test $ipv6 = "yes"
+then
+	AC_MSG_CHECKING([for IPv6 __ss_family member])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/socket.h>
+]], [[
+	struct sockaddr_storage testsock;
+	testsock.__ss_family=AF_INET;
+]])],[ipv6_have__ss_family=yes],[ipv6_have__ss_family=no])
+	AC_MSG_RESULT($ipv6_have__ss_family)
+	AC_MSG_CHECKING([for IPv6 sin6_scope_id member])
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <sys/socket.h>
+]], [[
+	struct sockaddr_in6 testsock;
+	testsock.sin6_scope_id=1;
+]])],[ipv6_have_sin6_scope_id=yes],[ipv6_have_sin6_scope_id=no])
+	AC_MSG_RESULT($ipv6_have_sin6_scope_id)
+fi
+
+dnl ===========================================================================
+dnl Handle some of the input generated above...
+dnl ============================================================================
+if test $ac_cv_func_usercmp != yes; then
+	AUTHUSER=authuser.o
+fi
+if test $ac_cv_func_ftw != yes; then
+	FTW=ftw.o
+fi
+if test $ac_cv_func_getusershell != yes; then
+	GETUSERSHELL=getusershell.o
+fi
+if test $ac_cv_func_setuid != yes; then
+	SCO=sco.o
+else
+	AC_DEFINE([HAVE_SETUID], [1], [have setuid])
+fi
+if test $ac_cv_func_snprintf != yes; then
+	SNPRINTF=snprintf.o
+fi
+if test $ac_cv_func_strcasestr != yes; then
+	STRCASESTR=strcasestr.o
+fi
+if test $ac_cv_func_strdup != yes; then
+	STRDUP=strdup.o
+fi
+if test $ac_cv_func_strerror != yes; then
+	STRERROR=strerror.o
+fi
+if test $ac_cv_func_strlcpy != yes; then
+	STRLCPY=strlcpy.o
+fi
+if test $ac_cv_func_strlcat != yes; then
+	STRLCAT=strlcat.o
+fi
+if test $ac_cv_func_strsep != yes; then
+	STRSEP=strsep.o
+fi
+if test $ac_cv_func_strstr != yes; then
+	STRSTR=strstr.o
+fi
+if test $ac_cv_func_syslog != yes; then
+	SYSLOG=syslog.o
+fi
+if test $ac_cv_func_glob != yes; then
+	GLOB=glob.o
+fi
+if test $ac_cv_func_strcasecmp != yes; then
+	STRCASECMP=strcasecmp.o
+fi
+if test $ac_cv_func_strncasecmp != yes; then
+	STRNCASECMP=strncasecmp.o
+fi
+AC_SUBST(AUTHUSER)
+AC_SUBST(FTW)
+AC_SUBST(GETUSERSHELL)
+AC_SUBST(SCO)
+AC_SUBST(SNPRINTF)
+AC_SUBST(STRCASESTR)
+AC_SUBST(STRDUP)
+AC_SUBST(STRERROR)
+AC_SUBST(STRLCAT)
+AC_SUBST(STRLCPY)
+AC_SUBST(STRSEP)
+AC_SUBST(STRSTR)
+AC_SUBST(SYSLOG)
+AC_SUBST(GLOB)
+AC_SUBST(STRCASECMP)
+AC_SUBST(STRNCASECMP)
+
+
+dnl ===========================================================================
+dnl Get the --enable, --disable, --with, --without stuff into the config files
+dnl fix it up when necessary
+dnl ============================================================================
+
+if test $upload = yes; then
+	AC_DEFINE([UPLOAD], [1], [want upload])
+fi
+if test $overwrite = yes; then
+	AC_DEFINE([OVERWRITE], [1], [want overwrite])
+fi
+if test $hostxs = yes; then
+	AC_DEFINE([HOST_ACCESS], [1], [want host access])
+fi
+if test $logfailed = yes; then
+	AC_DEFINE([LOG_FAILED], [1], [want to log failed])
+fi
+if test $logtoomany = yes; then
+	AC_DEFINE([LOG_TOOMANY], [1], [want to log too many])
+fi
+if test $private = no; then
+	AC_DEFINE([NO_PRIVATE], [1], [want no private])
+fi
+if test $dnsretry = yes; then
+	AC_DEFINE([DNS_TRYAGAIN], [1], [want DNS trying again])
+fi
+if test $anononly = yes; then
+	if test $anonymous = no; then
+		AC_MSG_ERROR(enable-anononly and disable-anonymous together don't make sense.)
+	fi
+	AC_DEFINE([ANON_ONLY], [1], [want anonymous logins only])
+fi
+
+if test $autobuf = yes; then
+        AC_DEFINE([AUTOBUF], [1], [want TCP auto-buffering])
+fi
+
+# 2000/07/17 Sylvain Robitaille: Ensure the "usual" paranoid behaviour.
+if test $paranoid = yes; then
+  delete=no
+  ow_file=no
+  strict_homedir=yes
+  site=no
+fi
+if test $delete = yes; then
+	AC_DEFINE([ENABLE_DELETE], [1], [want delete])
+fi
+if test $ow_file = yes; then
+	AC_DEFINE([ENABLE_OVERWRITE], [1], [want delete])
+fi
+if test $strict_homedir = no; then
+	AC_DEFINE([DISABLE_STRICT_HOMEDIR], [1], [don't want strict home directory])
+fi
+if test $site_umask = no; then
+	AC_DEFINE([DISABLE_SITE_UMASK], [1], [don't want site umask])
+fi
+if test $site_chmod = no; then
+	AC_DEFINE([DISABLE_SITE_CHMOD], [1], [don't want site chmod])
+fi
+if test $site_idle = no; then
+	AC_DEFINE([DISABLE_SITE_IDLE], [1], [don't want site idle])
+fi
+if test $site_exec = yes; then
+	AC_DEFINE([ENABLE_SITE_EXEC], [1], [don't want site exec])
+fi
+if test $site_alias = no; then
+	AC_DEFINE([DISABLE_SITE_ALIAS], [1], [don't want site alias])
+fi
+if test $site_groups = no; then
+	AC_DEFINE([DISABLE_SITE_GROUPS], [1], [don't want site groups])
+fi
+if test $site_cdpath = no; then
+	AC_DEFINE([DISABLE_SITE_CDPATH], [1], [don't want chdir path])
+fi
+if test $checkmethod = no; then
+	AC_DEFINE([DISABLE_SITE_CHECKMETHOD], [1], [don't want site check method])
+fi
+if test $checksum = no; then
+	AC_DEFINE([DISABLE_SITE_CHECKSUM], [1], [don't want site checksum])
+fi
+if test $site = no; then
+	AC_DEFINE([DISABLE_SITE], [1], [don't want site])
+fi
+
+if test $lastlog = yes; then
+	AC_DEFINE([USE_LASTLOG], [1], [want delete])
+fi
+
+if test "x$quota" != "xno"; then
+	AC_CHECK_HEADERS(sys/quota.h sys/fs/ufs_quota.h ufs/quota.h jfs/quota.h ufs/ufs/quota.h linux/quota.h)
+	if test $ac_cv_header_sys_quota.h = yes -o $ac_cv_header_sys_fs_ufs_quota_h = yes -o $ac_cv_header_ufs_quota_h = yes -o $ac_cv_header_jfs_quota_h = yes -o $ac_cv_header_ufs_ufs_quota_h = yes -o $ac_cv_header_linux_quota_h = yes; then
+		quota=yes
+	else
+		if test $quota = yes; then
+			AC_MSG_WARN(QUOTA not supported by OS - disabled)
+		fi
+		quota=no
+	fi
+	AC_MSG_CHECKING(for quota support)
+	AC_MSG_RESULT($quota)
+fi
+if test $quota = yes; then
+	dnl FIXME!!
+	dnl I didn't find a way to reliably check for QUOTA_DEVICE...
+	dnl so we're guessing at the system type, actually... :/
+
+	if test $ac_cv_header_sys_quota_h = yes -o $ac_cv_header_sys_fs_ufs_quota_h = yes; then
+		AC_DEFINE([QUOTA_DEVICE], [1], [have quota device])
+	fi
+
+	AC_MSG_CHECKING(whether quota support is file- or inode based)
+	AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+#include <unistd.h>
+#ifdef TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#include <time.h>
+#else
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h>
+#else
+#include <time.h>
+#endif
+#endif
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef HAVE_SYS_QUOTA_H
+#include <sys/quota.h>
+#else
+#ifdef HAVE_LINUX_QUOTA_H
+#include <linux/quota.h>
+#endif
+#endif
+#ifdef HAVE_SYS_FS_UFS_QUOTA_H
+#include <sys/fs/ufs/quota.h>
+#endif
+#ifdef HAVE_UFS_QUOTA_H
+#include <ufs/quota.h>
+#endif
+#ifdef HAVE_JFS_QUOTA_H
+#include <jfs/quota.h>
+#endif
+#ifdef HAVE_UFS_UFS_QUOTA_H
+#include <ufs/ufs/quota.h>
+#endif
+struct dqblk quota;]], [[ int f=quota.dqb_ihardlimit; ]])],[ result=inode ],[ result=file ])
+	AC_MSG_RESULT($result)
+	if test $result = inode; then
+		AC_DEFINE([QUOTA_INODE], [1], [have inode quota])
+	fi
+	AC_DEFINE([QUOTA], [1], [have quota])
+fi
+if test $ac_cv_header_security_pam_appl_h = no; then
+  if test $pam = yes; then
+    AC_MSG_WARN([You do not have PAM libraries, or you are using an incompatible PAM implementation. PAM support disabled.])
+    pam=no
+  fi
+fi
+if test $pam = yes; then
+	AC_DEFINE([USE_PAM], [1], [have PAM libs])
+	LIBS="$LIBS -lpam"
+	AC_CHECK_LIB(dl, dlopen, result=yes, result=no)
+	if test $result = yes; then
+		# Some PAM implementations require -ldl...
+		LIBS="$LIBS -ldl"
+	fi
+fi
+dnl ===========================================================================
+dnl See if we have shadow passwords...
+dnl ============================================================================
+AC_CHECK_LIB(shadow, setspent, result=yes, result=no)
+SHADOW_PASSWORD=0
+LIBSHADOW=0
+if test $result = yes; then
+	LIBS="$LIBS -lshadow"
+	SHADOW_PASSWORD=1
+	LIBSHADOW=1
+else
+	AC_CHECK_LIB(shadow, getspnam, result=yes, result=no)
+	if test $result = yes; then
+		LIBS="$LIBS -lshadow"
+		SHADOW_PASSWORD=1
+		LIBSHADOW=1
+	else
+		AC_CHECK_LIB(c, setspent, result=yes, result=no)
+		if test $result = yes; then
+			SHADOW_PASSWORD=1
+		fi
+	fi
+fi
+if test $SHADOW_PASSWORD = 1; then
+	if test $ac_cv_func_fgetspent != yes; then
+		AC_CHECK_LIB(shadow, fgetspent, result=yes, result=no)
+		if test $result = yes; then
+			if test $LIBSHADOW != 1; then
+				LIBS="$LIBS -lshadow"
+			fi
+		fi
+	fi
+	AC_DEFINE([SHADOW_PASSWORD], [1], [have shadow passwords])
+fi
+if test $ac_cv_header_skey_h = no; then
+  if test $skey = yes; then
+    AC_MSG_WARN([You do not have S/Key libraries, or you are using an incompatible implementation. S/Key support disabled.])
+    skey=no
+  fi
+fi
+if test $skey = yes; then
+	AC_DEFINE([SKEY], [1], [have SKEY])
+	LIBS="$LIBS -lskey"
+	AC_CHECK_FUNC(skey_keyinfo, [AC_DEFINE([SKEY_RFC2289], [1], [have RFC2289 SKEYs])])
+fi
+if test $ac_cv_header_opie_h = no; then
+  if test $opie = yes; then
+    AC_MSG_WARN(You don\'t have OPIE libraries, or you\'re using an incompatible implementation. OPIE support disabled.)
+    opie=no
+  fi
+fi
+if test $opie = yes; then
+	AC_DEFINE([OPIE], [1], [have OPIE])
+	LIBS="$LIBS -lopie -lmd"
+fi
+if test $newcd = yes; then
+	AC_DEFINE([ALTERNATE_CD], [1], [use alternate chdir])
+fi
+if test $chmod = yes; then
+	AC_DEFINE([UNRESTRICTED_CHMOD], [1], [use unrestricted chmod])
+fi
+if test $rfc931 = yes; then
+	AC_DEFINE([USE_RFC931], [1], [use identd])
+fi
+if test "$ratio" = "yes"; then
+	AC_DEFINE([RATIO], [1], [use ratios])
+fi
+if test "$passwd" = "yes"; then
+	AC_DEFINE([OTHER_PASSWD], [1], [use other password mechanism])
+fi
+if test $daemon = yes; then
+	AC_DEFINE([DAEMON], [1], [use as daemon])
+fi
+if test $mapchdir = yes; then
+	AC_DEFINE([MAPPING_CHDIR], [1], [use mapping chdir])
+fi
+if test $throughput = yes; then
+	AC_DEFINE([THROUGHPUT], [1], [want throughput])
+fi
+if test $count = yes; then
+	AC_DEFINE([TRANSFER_COUNT], [1], [want transfer count])
+	AC_DEFINE([TRANSFER_LIMIT], [1], [want transfer limit])
+fi
+if test $newlines = no; then
+	AC_DEFINE([NO_SUCKING_NEWLINES], [1], [no sucking new lines])
+fi
+if test $crackers = yes; then
+	AC_DEFINE([HELP_CRACKERS], [1], [help crackers])
+fi
+if test $verbose = yes; then
+	AC_DEFINE([VERBOSE_ERROR_LOGING], [1], [enable verbose error logging])
+fi
+if test $noop = no; then
+	AC_DEFINE([IGNORE_NOOP], [1], [ignore NOOPs])
+fi
+if test $virtual = yes; then
+	AC_DEFINE([VIRTUAL], [1], [enable virtual FTP server])
+fi
+if test $closedvirt = yes; then
+	AC_DEFINE([CLOSED_VIRTUAL_SERVER], [1], [closed virtual FTP server])
+fi
+if test $port = no; then
+	if test $pasv = no; then
+		AC_MSG_ERROR(Need at least PORT or PASV mode. Don't disable both.)
+	fi
+	AC_DEFINE([DISABLE_PORT], [1], [disable PORT mode])
+fi
+if test $pasv = no; then
+	AC_DEFINE([DISABLE_PASV], [1], [disable PASV mode])
+fi
+if test $plsm = no; then
+	AC_DEFINE([NO_PID_SLEEP_MSGS], [1], [disable PID sleep messages])
+fi
+if test $pasvip = yes; then
+	AC_DEFINE([FIGHT_PASV_PORT_RACE], [1], [fight PASV/PORT mode race])
+fi
+if test $anonymous = no; then
+	AC_DEFINE([NO_ANONYMOUS_ACCESS], [1], [disable anonymous FTP])
+fi
+if test $ls = yes; then
+	AC_DEFINE([INTERNAL_LS], [1], [want internal LS])
+fi
+if test $numericuid = yes; then
+	AC_DEFINE([LS_NUMERIC_UIDS], [1], [use numeric UIDs])
+fi
+if test $hidesetuid = yes; then
+	AC_DEFINE([HIDE_SETUID], [1], [hide setuid])
+fi
+if test $mail = yes; then
+	AC_DEFINE([MAIL_ADMIN], [1], [want mail admin])
+fi
+if test "x$base_homedir" != "xno"; then
+	AC_DEFINE_UNQUOTED([BASE_HOMEDIR], ["$base_homedir"], [have a base home directory])
+fi
+if test $nlstdirs = yes; then
+	AC_DEFINE([NLST_SHOWS_DIRS], [1], [NLST shows directories])
+fi
+if test "x$alt_homedir" != "xno"; then
+	AC_DEFINE_UNQUOTED([ALT_HOMEDIR], ["$alt_homedir"], [have an alternate home directory])
+fi
+if test "$ipv6" = "yes"; then
+	AC_DEFINE([INET6], [1], [want IPv6])
+	if test "$ipv6_have__ss_family" = "yes"; then
+		AC_DEFINE([HAVE__SS_FAMILY], [1], [have ss_family])
+	fi
+	if test "$ipv6_have_sin6_scope_id" = "yes"; then
+		AC_DEFINE([HAVE_SIN6_SCOPE_ID], [1], [have sin6_scope])
+	fi
+fi
+
+dnl TODO:is there a better check whether or not an argument is numeric???
+if test x`expr $bufsize + 1 - 1 2>/dev/null` = x$bufsize; then
+	AC_DEFINE_UNQUOTED([BUFFER_SIZE], [$bufsize], [set buffer size to number])
+fi
+if test x`expr $backlog + 1 - 1 2>/dev/null` = x$backlog; then
+	AC_DEFINE_UNQUOTED([MAX_BACKLOG], [$backlog], [set buffer backlog])
+else
+	AC_DEFINE_UNQUOTED([MAX_BACKLOG], [100], [set backlog to 100])
+fi
+
+AC_DEFINE_UNQUOTED([SIGNAL_TYPE], [void], [signal type is void])
+
+LIBS="$LIBS -lsupport"
+
+AC_SUBST(LIBS)
+
+AC_DEFINE([USE_ETC], [1], [use /etc])
+
+dnl ===========================================================================
+dnl Write results...
+dnl ============================================================================
+
+case "$host_os" in
+solaris2*)
+		AC_DEFINE([SVR4], [1], [SVR4])
+		AC_DEFINE([Sun], [1], [have a Sun])
+		AC_DEFINE([SOLARIS_2], [1], [have Solaris 2.x])
+		;;
+*linux*|*bsd*)
+		AC_DEFINE([SPT_PADCHAR], ['\0'], [set padding char to NULL])
+		;;
+*)
+		;;
+esac
+
+AC_CONFIG_FILES([Makefile src/Makefile support/Makefile util/privatepw/Makefile doc/Makefile src/pathnames.h doc/ftpaccess.5 doc/ftpconversions.5 doc/ftphosts.5 doc/ftpservers.5 doc/xferlog.5])
+AC_OUTPUT

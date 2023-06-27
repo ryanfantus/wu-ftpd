@@ -1,0 +1,107 @@
+#
+# Copyright (c) 1999-2003 WU-FTPD Development Group.
+# All rights reserved.
+# 
+# Portions Copyright (c) 1980, 1985, 1988, 1989, 1990, 1991, 1993, 1994 
+#    The Regents of the University of California.  
+# Portions Copyright (c) 1993, 1994 Washington University in Saint Louis.  
+# Portions Copyright (c) 1989 Massachusetts Institute of Technology.  
+# Portions Copyright (c) 1998 Sendmail, Inc.
+# Portions Copyright (c) 1983, 1995, 1996, 1997 Eric P. Allman.  
+# Portions Copyright (c) 1996, 1998 Berkeley Software Design, Inc.  
+# Portions Copyright (C) 1991, 1992, 1993, 1994, 1995 1996, 1997 
+#    Free Software Foundation, Inc.  
+# Portions Copyright (c) 1997 Stan Barber.  
+# Portions Copyright (c) 1997 Kent Landfield.
+# 
+# Use and distribution of this software and its source code are governed by 
+# the terms and conditions of the WU-FTPD Software License ("LICENSE").
+# 
+# If you did not receive a copy of the license, it may be obtained online at
+# http://www.wu-ftpd.info/license.html.
+# 
+# $Id: Makefile.in,v 1.7 2011/10/20 22:58:08 wmaton Exp $
+#
+
+prefix=@prefix@
+mandir=@mandir@
+datarootdir = @datarootdir@
+INSTALL=@INSTALL@
+
+manpages= $(mandir)/ftpwho.1 \
+	$(mandir)/ftpcount.1 \
+	$(mandir)/ftpaccess.5 \
+	$(mandir)/ftpconversions.5 \
+	$(mandir)/ftphosts.5 \
+	$(mandir)/ftpservers.5 \
+	$(mandir)/xferlog.5 \
+	$(mandir)/ftpd.8 \
+	$(mandir)/ftprestart.8 \
+	$(mandir)/ftpshut.8 \
+	$(mandir)/xferstats.8 \
+	$(FRC)
+
+all:  install
+
+install: $(dirs) $(manpages)
+
+$(mandir)/ftpcount.1: ftpcount.1
+	@echo installing ftpcount.1 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftpcount.1 $(mandir)/man1/ftpcount.1
+
+$(mandir)/ftpwho.1: ftpwho.1
+	@echo installing ftpwho.1 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftpwho.1 $(mandir)/man1/ftpwho.1
+
+$(mandir)/ftpaccess.5: ftpaccess.5
+	@echo installing ftpaccess.5 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftpaccess.5 $(mandir)/man5/ftpaccess.5
+
+$(mandir)/ftphosts.5: ftphosts.5
+	@echo installing ftphosts.5 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftphosts.5 $(mandir)/man5/ftphosts.5
+
+$(mandir)/ftpconversions.5: ftpconversions.5
+	@echo installing ftpconversions.5 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftpconversions.5 $(mandir)/man5/ftpconversions.5
+
+$(mandir)/ftpservers.5: ftpservers.5
+	@echo installing ftpservers.5 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftpservers.5 $(mandir)/man5/ftpservers.5
+
+$(mandir)/xferlog.5: xferlog.5
+	@echo installing xferlog.5 manpage.
+	${INSTALL} -m 644 -o bin -g bin xferlog.5 $(mandir)/man5/xferlog.5
+
+$(mandir)/ftpd.8: ftpd.8
+	@echo installing ftpd.8 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftpd.8 $(mandir)/man8/ftpd.8
+
+$(mandir)/ftpshut.8: ftpshut.8
+	@echo installing ftpshut.8 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftpshut.8 $(mandir)/man8/ftpshut.8
+
+$(mandir)/ftprestart.8: ftprestart.8
+	@echo installing ftprestart.8 manpage.
+	${INSTALL} -m 644 -o bin -g bin ftprestart.8 $(mandir)/man8/ftprestart.8
+
+$(mandir)/xferstats.8: xferstats.8
+	@echo installing xferstats.8 manpage.
+	${INSTALL} -m 644 -o bin -g bin xferstats.8 $(mandir)/man8/xferstats.8
+
+dirs:
+	@echo installing manpages.
+	-@mkdir -p $(mandir)
+	-@mkdir -p $(mandir)/man1
+	-@mkdir -p $(mandir)/man5
+	-@mkdir -p $(mandir)/man8
+
+clean:
+	rm -f ftpaccess.5
+	rm -f ftpconversions.5
+	rm -f ftphosts.5
+	rm -f ftpservers.5
+	rm -f xferlog.5
+
+distclean: clean
+	rm -f Makefile

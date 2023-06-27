@@ -1,0 +1,128 @@
+The files in this directory are Copyright (c) 2001 IBM and are released
+under the WU-FTPD license.
+
+  Copyright (c) 2001 IBM
+  All rights reserved.
+  Portions Copyright (c) 2000 Jeffrey Altman
+
+  Use and distribution of this software and its source code are governed
+  by the terms and conditions of the WU-FTPD Software License ("LICENSE").
+
+  If you did not receive a copy of the license, it may be obtained online
+  at http://www.wu-ftpd.info/license.html.
+
+
+** DO NOT USE THESE FILES TO GENERATE TOKENS TO BE USED IN ANGER **
+
+   These files are intended for basic functional testing ONLY.  Once you 
+have established connectivity make sure you delete any reference to them
+in your client and server configuration (and don't forget to remove 
+them from /usr/local/ssl/certs)
+
+   Nobody will take any responsibility for anything bad that happens if
+you use these files for any other prupose.
+
+
+
+186a9056.0
+----------
+   The hashed copy of the CA certificate - normally this would be a soft
+link, created with a command like:
+# ln -s cacert.pem `openssl x509 -hash -noout -in cacert.pem`.0
+   The hashed cert is use by the OpenSSL libraries when checking the
+certificate chain of a presented certificate.  This file would usually 
+sit in the /usr/local/ssl/certs directory on any host (client or server)
+that needs to trust certificates issued by this CA.  
+
+ca_passphrase
+-------------
+   This just demonstrates how the "passout file:FILE" parameter for 
+OpenSSL can be used.  In this case, it contains the value that is used to 
+protect the CA private key.
+
+cacert.cfg
+----------
+   This is the configuration file that is use to fill in the Distinguished 
+Name info into the CA's self signed cert.
+
+cacert.crt
+----------
+   This is a copy of cacert.pem, renamed for windows boxes who expect file
+extensions to mean something.
+
+cacert.pem
+----------
+   This is the self signed certificate of the CA.
+
+cacert.srl
+----------
+   This is the place where the CA signing part of the openssl code stores
+the certificate serial number.  It is needed to ensure that the CA does not
+issue certificates with the same serial number again.
+
+cakey.pem
+---------
+   This is the CA's private key, protected by the value in the ca_passphrase
+file.
+
+client-cert.crt
+---------------
+   This is a copy of client-cert.pem, renamed for windows boxes who expect file
+extensions to mean something.
+
+client-cert.pem
+---------------
+   This is the client's X.509 certificate.
+
+client-key-and-cert.p12
+-----------------------
+   This is the CA certificate, client's key and certificate, protected
+with the password 'password' in PKCS#12 format.  It is created
+from the cacert.pem, client-cert.pem and client-key-pass-is-password.pem
+files.  Some clients need PKCS#12 instead of PEM format.
+
+client-key-pass-is-password.key
+-------------------------------
+   This is a copy of client-key-pass-is-password.pem, renamed for windows 
+boxes who expect file extensions to mean something.  
+
+client-key-pass-is-password.pem
+-------------------------------
+   This is the protected client's private key.  The password for the protection
+is 'password'.  
+
+client-key-clear.pem
+-------------------------------
+   This is the unprotected client's private key.
+
+client.csr
+----------
+   This is the certificate signing request that the client generated to pass 
+to the CA for signing and certificate creation.
+
+clientcert.cfg
+--------------
+   This is the configuration file that is use to fill in the Distinguished 
+Name info into the Client's Certificate request.
+
+ftpd-rsa-key.pem
+----------------
+   This is the unprotected server's private key.
+
+ftpd-rsa-key-password-is-unsafe.pem
+-----------------------------------
+   This is the protected server's private key - use "-z password=unsafe" if you use this file instead of the ftpd-rsa-key.pem one.
+
+ftpd-rsa.pem
+------------
+   This is the server's X.509 certificate.
+
+ftpd.csr
+--------
+   This is the certificate signing request that the server generated to pass 
+to the CA for signing and certificate creation.
+
+ftpdcert.cfg
+------------
+   This is the configuration file that is use to fill in the Distinguished 
+Name info into the Server's Certificate request.

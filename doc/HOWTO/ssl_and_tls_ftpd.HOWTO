@@ -1,0 +1,858 @@
+
+ 
+  Copyright (c) 2001,2002 IBM 
+  All rights reserved.
+  Portions Copyright (c) 2000 Jeffrey Altman
+  
+  Use and distribution of this software and its source code are governed 
+  by the terms and conditions of the WU-FTPD Software License ("LICENSE").
+ 
+  If you did not receive a copy of the license, it may be obtained online
+  at http://www.wu-ftpd.info/license.html.
+
+
+ 
+ssl_and_tls_ftpd.HOWTO
+
+Version 0.7 - May 11th 2004
+changes v0.6->0.7
+- add -z certpass
+Version 0.6
+changes v0.5->0.6
+- add -z notls, -z allowccc, -z rsader and -z logalldata
+Version 0.5 - April 30th 2002
+changes v0.4->0.5
+- add -z CAfile and -z CApath options
+- correct password protection of client key in examples
+Version 0.4 - October 16th 2001
+changes v0.3->0.4
+- add -z password option
+changes v0.1->0.3 (0.2 didn't see the light of day)
+- add section 10 (A growable list of common gotchas)
+- add discussion about export ciphers and ws_ftp
+- correct some filenames and links
+
+Paul Ford-Hutchinson - paulfordh@uk.ibm.com
+
+Thanks to Pete 'Luna' Runestig for the code which I so shamelessly hacked
+Thanks to Jeffrey Altman for the lucid cipher list stuff in Appendix A.
+Thanks to the wu-ftpd team for the ftpd code this is inserted into
+Thanks to the OpenSSL team for the good work.
+
+How To use TLS (and SSL) in wu_ftpd
+===================================
+
+Contents
+========
+
+0) Quick start
+1) Pre-Requisites
+2) Compiling wu-ftp
+3) Installing and Command Line options
+4) The TLS configuration file
+5) Debugging and Problem Determination
+6) X.509 certificates
+7) Server Testing
+8) Client Testing
+9) Client Certificate Mapping
+10) A Growable list of common 'gotchas'
+APPENDIX A) How to put together a 'cipher list string'
+APPENDIX B) Resources
+
+0) Quick start (assume OpenSSL is installed in /usr/local/ssl)
+==============
+
+You'll need to be root for most of this.
+
+If you get problems - check the syslog ("/var/log/messages" on linux).
+
+'./configure --enable-tls'
+'make'
+'cp doc/HOWTO/TLS_samp/cacert.pem /usr/local/ssl/certs/cacert.pem'
+'ln -s /usr/local/ssl/certs/cacert.pem /usr/local/ssl/certs/186a9056.0'
+'cp doc/HOWTO/TLS_samp/ftpd-rsa.pem /usr/local/ssl/certs/ftpd-rsa.pem'
+'cp doc/HOWTO/TLS_samp/ftpd-rsa-key.pem /usr/local/ssl/private/ftpd-rsa-key.pem'
+Install wu-ftpd as per wu-ftpd instructions
+modify inetd.conf as per wu-ftpd instructions
+refresh inetd as per wu-ftpd instructions
+'ftp localhost' and check a) you are talking to the new wu-ftpd and b) that 
+you get the 220 reply and not the 530.
+follow the instructions below for Client Testing
+
+Cool - now read about X.509 Certificates and ** CREATE YOUR OWN **
+
+
+1) Pre-Requisites
+=================
+
+   This HOWTO was written for the TLS support in wu-ftpd.  The 
+version of wu-ftpd is 2.8.0 and the version of OpenSSL is 0.9.6.
+
+   You'll need to get OpenSSL (from http://www.openssl.org) and compile and
+install it.  See the OpenSSL documentation for detailed info.  Hopefully
+a simple './config'; 'make'; 'make test'; 'make install' will suffice.
+
+   This HOWTO will assume that you have put OpenSSL in '/usr/local/ssl' 
+and have 'usr/local/ssl/bin' in your PATH.  You can do things differently
+and it should work - but then you'll need to translate this document to 
+your locale.
+
+   (NOTE - RedHat 7.2 uses /usr/share/ssl instead of /usr/local/ssl)
+
+   Please note, the whole TLS vs SSL deal.  TLS is SSL v3.1.  There is
+no intended distinction within this HOWTO between SSL and TLS.
+
+
+2) Compiling wu-ftpd
+====================
+
+   Hopefully you have already compiled and installed a vanilla wu-ftpd 2.8.0
+If not, I suggest you do that _before_ embarking on TLS stuff.  All the 
+debugging, testing etc.. stuff in here will assume that you are starting from
+a base of a happy, working wu-ftpd install and the only thing you are changing
+is the addition of TLS.  If you are trying to boil the ocean and do it all at 
+once - Good Luck - but don't send me any email about it.
+
+   So, you've got a directory with wu-ftpd in it (the one containing 
+'configure', 'config.h.noac' etc...).  There are 2 ways to 'do' OpenSSL.  
+
+   a) If you got 'configure' to work then you'll need to add parameter(s) to 
+      the 'configure' command.
+   b) If you used the 'build' script then you'll need to edit 'config.h.noac'
+
+   configure method
+   ----------------
+
+   There are four new parameters for the 'configure' command
+
+    --enable-tls             - The default value is TLS disabled.  To 
+                               allow the ftpd to use TLS.  You'll need to
+                               specify this.
+
+    --enable-tls-debug       - The default value is TLS debugging disabled
+                               in the binary.  This option is really to help 
+                               when all is going wrong.  This debugging 
+                               (when enabled on the command line) causes
+                               huge files to be written and slows down data
+                               transfers badly.  See the Debugging section 
+                               below.   Only use this if you can't 
+                               work out what is going on. 
+
+    --disable-insecure       - The default value is that insecure connections
+                               are enabled.  This flag allows the compiler
+                               to create and distribute a binary which will
+                               ONLY allow secured connections (via TLS).
+                               See the Command Line options 'tlsonly', 
+                               'tlsdata' and 'tlsdata' below.
+                               Only use this option if you want to create a 
+                               binary that must use TLS.
+
+    --with-openssl-dir=PATH  - The default value is 'usr/local/ssl'.  This is
+                               the location of the installed OpenSSL code.
+                               The makefile will expect to find the 'lib'
+                               and 'include' directories as subdirectories
+                               of this parameter.  Only specify this option
+                               if your OpenSSL installation is not in the
+                               default '/usr/local/ssl' directory.
+                               
+
+   build method
+   ------------
+
+   You'll need to look at config.h.noac and src/makefiles/Makefile.???
+
+   config.h.noac has three #defines 
+
+      USE_TLS is the same as --enable_tls above
+      FORCE_TLS is the same as --disable-insecure above
+      TLS_DEBUG is the same as --enable-tls-debug above
+
+      You will also need to set one of SNPRINTF_OK; SNPRINTF_HALFBROKEN and 
+      SNPRINTF_BROKEN - see config.h.noac for more details.
+   
+
+   src/makefiles/Makefile.??? needs to have the LIBES, LFLAGS and IFLAGS
+       macros updated as described in config.h.noac
+
+
+
+   Once these changes have been made - compile ftpd as you did for the 
+vanilla install.
+
+
+3) Installing and Command Line Options 
+======================================
+
+   Assuming that ftpd is running as the ftp service via inetd, edit 
+/etc/inetd.conf and add the TLS parameter to the ftp service call.  
+
+   The TLS parameters are indicted with the '-z' tag and are placed on
+the command line or in the configuration file.
+
+   "-z config=FILE" - there is no default value for the config file
+
+      This parameter specifies the TLS config file that can be used.
+      The config file conists of the TLS parameters (without the "-z"
+      prefix).  The file can have comments (lines starting with '#').
+      This file is useful when the inetd running has a limited length 
+      for parameters on the ftpd server command line.  See the section
+      on The TLS configuration file later.  
+
+   "-z debugfile=FILE" - default value is "ftpd.debug"
+
+      This parameter specifies where the debugging information should be 
+      written to.  The debug file will get _very_ large and will slow down
+      data transfers significantly.  This parameter is only useful if the 
+      binary was compiled with --enable-tls-debug (or TLS_DEBUG) and if
+      the "-z debug" option is set.
+
+   "-z debug" - default value is no debugging
+
+      This parameter will enable debugging into the debugfile if the 
+      binary was compiled with --enable-tls-debug (or TLS_DEBUG).  Use
+      debugging with care.  The main use for debugging is to ensure that 
+      parameter processing and TLS startup is working O.K.  It is 
+      recommended that "-z debugfile=FILE" precedes the "-z debug" 
+      parameter and these are the first two TLS related parameters
+      processed.
+
+   "-z rsacert=FILE" or "-z cert=FILE" - default value is "ftpd-rsa.pem"
+
+      This parameter specifies where OpenSSL should get the RSA certificate
+      from.  The RSA certificate should be in PEM format (see x.509 
+      discussions below).
+
+   "-z rsakey=FILE" or "-z key=FILE" - default value is "ftpd-rsa-key.pem"
+
+      This parameter specifies where OpenSSL should get the RSA Private key
+      from.  The RSA Private key should be in PEM format (see x.509 
+      discussions below).
+
+   "-z dsacert=FILE" - default value is "ftpd-dsa.pem"
+
+      This parameter specifies where OpenSSL should get the DSA certificate
+      from. 
+
+   "-z dsakey=FILE" - default value is "ftpd-dsa-key.pem"
+
+      This parameter specifies where OpenSSL should get the DSA Private key
+      from. 
+
+   "-z dhparam=FILE" - default value is "ftpd-dhparam.pem"
+
+      This parameter specifies where OpenSSL should get the Diffie-Hellman
+      parameters from. 
+
+   "-z crlfile=FILE" - default value is "ftpd-crl.pem"
+
+      This parameter specifies where OpenSSL should get the Certificate
+      Revocation List file from. 
+
+   "-z crldir=FILE" - there is no default value
+
+      I really don't know what this does.  Perhaps I should ask Pete Runestig
+
+   "-z cipher=LIST" - default value is "ALL:!EXP"
+
+      This tells the OpenSSL librraies which Cipher Suites to advertise.
+      (See APPENDIX A)
+
+   "-z randfile=FILE" - default value is "/usr/local/ssl/.rnd"
+
+      This tells the OpenSSL code where to get and store random data.
+      A relative path for this file is a BAD idea as it puts a file
+      in the current directory whenever a session is finished.
+
+   "-z systemcertdir=DIR" - default value is "/usr/local/ftpsd/usercerts"
+
+      This tells the ftp server where to look for system-wide Certificate
+      mapping files.  See the Client Certificate Mapping section later.
+
+   "-z authmode=OPTION" - default option is "client_can"
+
+      This tells the OpenSSL libraries what to do about authentication.
+      There are three options.
+        - 'server'      The TLS session will not request or use client 
+                        certificates at all.  Only the server will be 
+                        authenticated.
+        - 'client_can'  The TLS session will request a client 
+                        certificate but will continue if one is not
+                        presented.
+        - 'client_must' The TLS session will request a client 
+                        certificate and will stop if one is not
+                        presented.
+
+   "-z certpass=OPTION" - default option is "certok"
+
+      This tells the server how to handle sessions that have been 
+      authenticated with X.509 certificates.
+      There are two options.
+        - 'certok'      The Certificate is sufficient.  A password
+                        will not be requested and password commands
+                        from the client will be rejected.
+        - 'needpass'    Even if the session is X.509 client certificate
+                        authenticated, a valid password must also be
+                        supplied.
+
+   "-z password=PASSWORD" - there is no default password 
+       
+      This passes the specified password to the PEM decryption
+      routines and thus can be used to provide the decryption password 
+      for the rsakey and dsakey files.  If this value is not specified
+      then the OpenSSL libraries will interactively ask for the
+      password if a file is discovered to be encrypted.
+
+   "-z CAfile=FILE" - there is no default CAfile
+
+      This is the list of Certificate Authorities that will be passed
+      in the 'Certificate' message in the TLS handshake.  It should
+      contain a list of acceptable CAs that the Client can present 
+      a certificate from.  There will be a warning in the logs if 
+      this value is not set and authmode is 'client_can' or 
+      'client_must'.  TLS (RFC2246) does not allow an empty list 
+      for this packet - however openssl (as of 0.9.6c) will 
+      happily send one.
+
+   "-z CApath=FILE" - there is no default CApath
+
+      This is the directory that should contain the CA certificates
+      and hashes that are used to verify the client certificates 
+      presented.  A warning will be put in the logs if this value 
+      is not set when CAfile is.  Ideally all certificates in CAfile
+      should be present in this directory.
+
+   "-z certsok"
+      
+      This flag tells the ftp server not to check the CA, CRL etc... of
+      any presented Client cert.  Useful for testing - of dubious value
+      in real life.
+
+   "-z allow_auth_ssl"
+ 
+      This flag tells the ftp server to allow the now deprecated "AUTH SSL"
+      command to trigger the TLS negotiation.  This is not recommended, as
+      the bahaviour exhibited by the Server is not in line with RFC2228.
+      Only set this flag if you have awkward clients that insist on using
+      the bad old ways.
+
+   "-z bad_auth_ssl_reply"
+
+      This flag tells the ftp server to reply to "AUTH SSL" with "334" and 
+      not "234".  This is incorrect behaviour, as defined by RFC2228, but 
+      it is what the old SSL patch for 2.4.2 used to to.  Only use this flag 
+      if you have incorrectly coded clients that need "334" instaed of "234".
+
+   "-z tlsonly"        - This will be set on if --disable-insecure
+   "-z protect_user"      or FORCE_TLS were used at compile time.
+
+      This flag tells the ftp server to refuse USER commands until the control
+      connection has been succesfully protected.  In effect this means that 
+      all sessions must be protected by TLS.  
+      NOTE: this applies to ALL security mechanisms.
+
+   "-z clientcert" - This will be set on if --disable-insecure or FORCE_TLS were
+                     used at compile time.
+
+      This flag tells the ftp server to refuse to accept PASS as an 
+      authentication mechanism.  The effect of this is to force the client 
+      to authenticate via an X.509 Client certificate.
+
+   "-z tlsdata" - This will be set on if --disable-insecure or FORCE_TLS were
+                  used at compile time.
+
+      This flag tells the ftp server to refuse to transmit data on 
+      data connections that are not protected by TLS.
+
+   "-z notls" 
+
+      This stops TLS being available as a security mechanism.  The 
+      purpose of this is to allow a TLS capable binary to have TLS
+      disabled at runtime.
+
+   "-z allowccc" 
+
+      This allows the client to request that TLS be dropped from 
+      the control connection and for it to carry on in plaintext.
+      Whilst possibly useful in a NAT/firewalled environment - be
+      sure you know why you want to let clients do this.
+
+   "-z rsader" 
+
+      Just in case you really need your certs and keys in DER format
+      instead of PEM.  Don't know why you would - but you can.
+
+   "-z logallata" 
+
+      Put lots of TLS connection stuff in the syslog.  You might be 
+      testing, or paranoid.
+
+
+   A typical entry in /etc/inetd.conf might look like 
+ftp stream tcp nowait root /usr/sbin/ftpsd -l -d -z config=/etc/ftpsd.conf
+OR
+ftp stream tcp nowait root /usr/sbin/ftpsd -l -d -z tlsonly -z tlsdata
+
+   A typical /etc/xinetd.d/wu-ftpd might look like 
+
+# default: on
+# description: The wu-ftpd FTP server serves FTP connections. It uses \
+#       normal, unencrypted usernames and passwords for authentication.
+service ftp
+{
+        disable = no
+        socket_type             = stream
+        wait                    = no
+        user                    = root
+        server                  = /usr/sbin/in.ftpd
+        server_args             = -l -a -z config=/etc/ftpsd.conf
+        log_on_success          += DURATION USERID
+        log_on_failure          += USERID
+        nice                    = 10
+}
+
+
+
+4) The TLS configuration file
+=============================
+
+   The TLS configuration file (specified by "-z config=FILE" on the command 
+line) can contain any of the above TLS parameters (without the "-z " prefix).
+Parameters on the comand line will override parameters in the configuration 
+file.  If the file contains the PEM password - make sure you keep it safe.
+
+   A sample configuration file might look like
+#
+# ftpsd configuration file
+#
+# where are our certs/keys
+#
+cert=/etc/security/ftpd_cert.pem
+key=/etc/security/ftpd_key.pem
+#
+# we only want weak encryption
+#
+cipher=EXP
+#
+# provide the list of acceptable CA's and the place to find them
+#
+CAfile=/usr/local/ssl/certs/ftpd_client_ca_certlist.pem
+CApath=/usr/local/ssl/certs
+#
+#
+# let's ensure that the client uses TLS and authenticates via X.509 certs
+#
+tlsonly
+tlsdata
+clientcert
+#
+
+
+5) Debugging and Problem Determination
+======================================
+
+   Assuming that you have a correctly working ftpd and have now installed 
+the TLS capable one...
+
+   Try connecting with a normal ftp client.
+   - if the server's TLS configuration is broken then you'll get back a 
+     message "530 TLS subsystem failed."
+
+   Have a look at the syslog ("/var/log/messages" on linux) and see if
+that has anything useful in it. 
+
+   If that doesn't help then use "-z debug" (and "-z debugfile=FILE")
+and have a look in that output.  Don't forget to get rid of them once
+you've got it working.
+
+   Unless you are using the "-z tlsonly" option (or if the binary was
+made with --disable-insecure or FORCE_TLS) then you should be able to 
+use the ftp server as a normal, unprotected server.
+
+
+6) X.509 certificates
+=====================
+
+   For a basic end-to-end test you'll need 3 certificates.  Firstly you'll 
+need a self-signed certificate that will be used to sign the other two (this
+is the CA certificate).  Secondly you'll need a certificate for the server.
+Finally, you'll need a certificate for the client.  The client and server 
+certificates need to be signed by the CA.  There are many ways of getting 
+these certificates - this HOWTO will assume you want to do it yourself using
+the OpenSSL toolkit that you have already got on the box.
+
+   The sample certificates and keys provided (in the TLS_samp subdirectory)
+were created from these exact instructions.  Feel free to use them as a 
+basic connectivity test; but please do not use them in anger.  They afford
+no security as all the private keys are provided and so anyone can do anything
+with them.
+
+Setting up ftpd to use a self signed CA signed certificate using openssl
+------------------------------------------------------------------------
+
+   You probably want to be root to do most of this.
+
+- create a file containing the CA key's passphrase
+
+$ echo CHOOSE_A_GOOD_CA_PASSPHRASE >ca_passphrase
+
+- create a file full of random data
+
+$ cat /dev/random >.rnd   (wait a bit and Ctrl-C)
+
+- create a key pair - protected by the passphrase for the CA
+
+$ openssl genrsa -des3 -passout file:ca_passphrase -rand .rnd 2048 >cakey.pem
+
+- create a CA self signed cert
+
+$ openssl req -x509 -new -days 1000 -key cakey.pem \
+  -passin file:ca_passphrase  -out cacert.pem -config cacert.cfg
+
+
+cacert.cfg looks like this ...
+-----------------------------
+[req]
+distinguished_name = req_distinguished_name
+prompt = no
+
+[ req_distinguished_name ]
+C=UK
+ST=Insecure
+L=Warwick
+O=wu_ftpd_HOWTO_sample_CA
+OU=my_ca_orgunit
+CN=Do not trust me
+emailAddress=my_ca@localhost
+------------------------------
+
+- create a file full of random data
+
+$ cat /dev/random >.rnd   (wait a bit and Ctrl-C)
+
+- create a server key pair (unprotected)
+
+$ openssl genrsa -rand .rnd 1024 >ftpd-rsa-key.pem
+
+- create a server certificate signing request
+
+$ openssl req -new -key ftpd-rsa-key.pem -out ftpd.csr -config ftpdcert.cfg
+
+[ optionally
+- create a protected copy of the server's key if you want
+
+$  openssl rsa -in ftpd-rsa-key.pem  -out ftpd-rsa-key-password-is-unsafe.pem \
+   -des3 -passout pass:unsafe
+]
+
+- create the server cert
+
+$ openssl x509 -req -days 999 -in ftpd.csr -out ftpd-rsa.pem \
+  -CA cacert.pem -CAcreateserial -CAkey cakey.pem -passin file:ca_passphrase
+
+ftpdcert.cfg looks like this ...
+-----------------------------
+[req]
+distinguished_name = req_distinguished_name
+prompt = no
+
+[ req_distinguished_name ]
+C=UK
+ST=my_ftpd_state
+L=my_ftpd_town
+O=my_ftpd_org
+OU=my_ftpd_orgunit
+CN=localhost
+emailAddress=my_ftpd@localhost
+------------------------------
+
+   Now - make sure cakey.pem and ca_passphrase are very secure
+put ftpd-rsa-key.pem into /usr/local/ssl/private
+put ftpd-rsa.pem and cacert.pem into /usr/local/ssl/certs
+create the hashed symlink for the cacert...
+
+$ cd /usr/local/ssl/certs
+$ ln -s cacert.pem `openssl x509 -hash -noout -in cacert.pem`.0
+
+   The hashed symlink allows the OpenSSL libraries to look for the CA's 
+certificate in any client or server that it is trying to verify.  You'll 
+need this symlink (and the cacert.pem file) on any box that uses OpenSSL
+for this purpose.
+
+   This sorts out the server's certificate.  (time to hack inetd.conf
+and refresh inetd)
+
+   You can test this works by ftp-ing to the sever and checking you get
+the 220 welcome reply.
+
+
+Using a client cert with ftp-tls and ftpd-tls
+---------------------------------------------
+
+   This assumes that you have set up the CA and ftpd certs as described
+above.
+
+
+Create a certificate using openssl
+----------------------------------
+
+- create a file full of random data
+
+$ cat /dev/random >.rnd   (wait a bit and Ctrl-C)
+
+- create a (protected) client key pair
+
+$ openssl genrsa -passout pass:password -rand .rnd \
+          -des3 1024 >client-key-pass-is-password.pem
+
+- unprotect the client key (if you want)
+
+$ openssl rsa -passin pass:password -in client-key-pass-is-password.pem \
+   -out client-key-clear.pem
+
+- create a client certificate signing request
+
+$ openssl req -new -key client-key-clear.pem -out client.csr \
+  -config clientcert.cfg
+
+- create the client cert
+
+$ openssl x509 -req -days 999 -in client.csr -out client-cert.pem \
+  -CA cacert.pem -CAcreateserial -CAkey cakey.pem -passin file:ca_passphrase
+
+clientcert.cfg looks like this ...
+-----------------------------
+[req]
+distinguished_name = req_distinguished_name
+prompt = no
+
+[ req_distinguished_name ]
+C=UK
+ST=my_client_state
+L=my_client_town
+O=my_client_org
+OU=my_client_orgunit
+CN=my_client
+emailAddress=my_client@localhost
+------------------------------
+
+- if your application needs a PKCS#12 file (.p12) instead of the various
+PEM encoded files, use this command to create it.
+
+$ openssl pkcs12 -in client-cert.pem -inkey client-key-pass-is-password.pem \
+  -export -des3 -passout pass:password -passin pass:password -CAfile \
+  cacert.pem -chain -out client-key-and-cert.p12
+
+
+7) Server Testing
+=================
+
+   This is pretty much covered elsewhere.
+
+
+8) Client Testing
+=================
+
+   If you want to autologin using the ftpd-tls default mechanism see the 
+section about Client Certificate Mapping.
+
+For Pete Runestig's BSD based ftp client ...
+----------------------------------------
+$ ftp -z key=client-key-pass-is-password.pem -z cert=client-cert.pem \
+      -z certsok localhost
+
+   We use the "-z certsok" flag to stop warnings about the CA and the hostname.
+Once your basic testing is complete, you should remove this flag and address
+any issues that are then caused.
+
+For IPSwitch's ws_ftp (6.60+) ...
+-----------------------------
+
+   You need the server to have the "-z allow_auth_ssl" flag set.
+   
+   You need the server to have export ciphersuites enabled "-z ALL" (note,
+the default value for this is "-z ALL:!EXP" which is incompatible with
+ws_ftp 6.6 and 7.0)
+
+   You need cacert.pem, client-key-pass-is-password.pem and client-cert.pem;
+but you need to copy or rename the 'cacert.pem' file to 'cacert.crt'; the
+'client-cert.pem' file to 'client-cert.crt' and the 'client-key-pass-is-password.pem' file to 'client-key-pass-is-password.key'.
+
+Go to 'View' -> 'Configure SSL...' 
+
+   In the 'Certificate Selection' tab, enter 'client-key-pass-is-password.key'
+into the 'Private Key' field; 'client-cert.crt' into the 'Certificate' field
+and 'password' into the two 'Pass phrase' fields.
+
+   In the 'Trusted Authorities' tab, click on the 'Import' button and select
+the 'cacert.crt' file.
+
+   Now, on the connection pop-up - check the 'Secure (SSL)' box and try
+to connect.
+
+
+9) Client Certificate Mapping
+=============================
+
+   The first thing to understand is that, although Client Certificates can
+identify the user to the server, the FTP 'USER' command still needs to be
+issued and the parameter to that command is treated as the user that is
+trying to authenticate.
+ 
+   Out of the box, there are two mechanisms to map certificates to users.  
+If you want to get your hands dirty then the x509_to_user.c file can be 
+hecked to your needs.
+
+Administrator-centric Mapping
+-----------------------------
+
+   The directory pointed at by the "-z systemcertsdir=DIR" parameter contains
+a collection of files.  The name of a file is the name of the system user 
+and corresponds to the parameter that the client passes on the "USER" command.
+When a TLS authenticated user issues the "USER xxx" command, the ftp server 
+will check the systemcertsdir for a file called 'xxx' and verify that the
+certificate used for the TLS authentication is contained in the file.  If the
+certificate is present in the file then the '232' reply will be sent to the 
+client, indicating that the authentication phase is complete (no PASS command
+is requested).  If the file exists but does not contain the certificate 
+presented on the TLS session then the '331' reply is sent to the client, which
+demands a password.  If the file does not exist then the User-centric Mapping
+process is invoked.
+
+User-centric Mapping
+--------------------
+
+   If the systemcertsdir does not exist, or there is no file with the name of
+the user in it, then the ftp server will look into the user's home directory
+for a file called ".tlslogin"  If this file exists and contains the 
+certificate that the TLS session is protected with, then the user is logged 
+straight in (with the '232' reply).  Otherwise a password is requested (by 
+the '331' reply).
+
+10) A Growable list of common 'gotchas'
+=======================================
+
+ 10-a) - Ensure that the CA cert of any client cert presented is available 
+to openssl (in /usr/local/ssl/certs by default) and that a logical link
+to the hash has been created :-
+(# ln -s CAcert.pem `openssl x509 -noout -hash -n CAcert.pem`.0)
+
+ 10-b) - If things are going wierd, try adding -z certsok to the ftpd 
+command line (or configuration file)
+
+ 10-c) - check the syslog (/var/log/messages on linux)
+
+ 10-d) - compile with debugging ($ ./configure --enable-tls --enable-tls-debug)
+and put -z debug on the ftp invocation line.  The top of the debug file dumps
+the current options and is good for checking that the config file and
+command line parms are being processed OK.  Don't forget that the debug 
+file contains sensitive information - keep it safe.
+
+ 10-e) - check for CipherSuite compatibility between the Client and Server - 
+quite often this basic problem can cause pretty bad looking failures.
+
+ 10-f) - SSL Handshake problems are usually quite easy to spot once the 
+SSL stuff is decoded.  Try Eric Rescorla's ssldump (link at bottom)
+
+ 10-g) - if the server appears to hang on connection, check that the
+private key can be decrypted. 
+
+ 10-h) - if you get "SSL_CTX_use_PrivateKey_file(*/ftpd-rsa-key.pem) 
+error:06065064:digital envelope routines:EVP_DecryptFinal:bad decrypt" 
+in the syslog - the password is probably incorrect
+
+APPENDIX A) How to put together a  'cipher list string':
+========================================================
+
+  This discusses the parameter to the "-z cipher=" option
+
+  Key Exchange Algorithms:
+    "kRSA"      RSA key exchange
+    "kDHr"      Diffie-Hellman key exchange (key from RSA cert)
+    "kDHd"      Diffie-Hellman key exchange (key from DSA cert)
+    "kEDH'      Ephemeral Diffie-Hellman key exchange (temporary key)
+
+  Authentication Algorithm:
+    "aNULL"     No authentication
+    "aRSA"      RSA authentication
+    "aDSS"      DSS authentication
+    "aDH"       Diffie-Hellman authentication
+
+  Cipher Encoding Algorithm:
+    "eNULL"     No encodiing
+    "DES"       DES encoding
+    "3DES"      Triple DES encoding
+    "RC4"       RC4 encoding
+    "RC2"       RC2 encoding
+    "IDEA"      IDEA encoding
+
+  MAC Digest Algorithm:
+    "MD5"       MD5 hash function
+    "SHA1"      SHA1 hash function
+    "SHA"       SHA hash function (should not be used)
+
+  Aliases:
+    "ALL"       all ciphers
+    "SSLv2"     all SSL version 2.0 ciphers (should not be used)
+    "SSLv3"     all SSL version 3.0 ciphers
+    "EXP"       all export ciphers (40-bit)
+    "EXPORT56"  all export ciphers (56-bit)
+    "LOW"       all low strength ciphers (no export)
+    "MEDIUM"    all ciphers with 128-bit encryption
+    "HIGH"      all ciphers using greater than 128-bit encryption
+    "RSA"       all ciphers using RSA key exchange
+    "DH"        all ciphers using Diffie-Hellman key exchange
+    "EDH"       all ciphers using Ephemeral Diffie-Hellman key exchange
+    "ADH"       all ciphers using Anonymous Diffie-Hellman key exchange
+    "DSS"       all ciphers using DSS authentication
+    "NULL"      all ciphers using no encryption
+Each item in the list may include a prefix modifier:
+
+    "+"         move cipher(s) to the current location in the list
+    "-"         remove cipher(s) from the list (may be added again by
+                a subsequent list entry)
+    "!"         kill cipher from the list (it may not be added again
+                by a subsequent list entry)
+
+If no modifier is specified the entry is added to the list at the current
+position.  "+" may also be used to combine tags to specify entries such as
+"RSA+RC4" describes all ciphers that use both RSA and RC4.
+
+For example, all available ciphers not including ADH key exchange:
+
+  ALL:!ADH:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP
+
+All algorithms including ADH and export but excluding patented algorithms:
+
+  HIGH:MEDIUM:LOW:EXPORT56:EXP:ADH:!kRSA:!aRSA:!RC4:!RC2:!IDEA
+
+The OpenSSL command
+
+  openssl ciphers -v <list of ciphers>
+
+may be used to list all of the ciphers and the order described by a specific
+<list of ciphers>.
+
+
+APPENDIX B) RESOURCES
+=====================
+
+Pete Runestig's ProFTPd, OpenBSD ftpd and ftp
+ftp://ftp.runestig.com
+
+IPSwicth ws_ftp client for windows
+http://www.ipswitch.com
+
+Kermit kftp
+http://www.kermit-project.org/security.html
+
+My state of the Union for ftp and ssl
+http://www.ford-hutchinson.com/~fh-1-pfh/ftps-ext.html
+
+OpenSSL
+http://www.openssl.org
+
+wu-ftpd
+http://wu-ftpd.info
+
+ssldump
+http://www.rtfm.com/ssldump

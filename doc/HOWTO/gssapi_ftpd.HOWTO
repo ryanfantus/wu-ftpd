@@ -1,0 +1,253 @@
+
+Copyright 2003 Sun Microsystems, Inc.  All rights reserved.
+
+Use and distribution of this software and its source code are governed
+by the terms and conditions of the WU-FTPD Software License ("LICENSE").
+
+If you did not receive a copy of the license, it may be obtained online
+at http://www.wu-ftpd.info/license.html.
+
+$Id: gssapi_ftpd.HOWTO,v 1.5 2011/10/20 22:58:08 wmaton Exp $
+
+Acknowledgements
+================
+
+Thanks to MIT Kerberos Developers for the original FTP server
+with GSS-API support which was the basis for much of this work.
+Thanks to the wu-ftpd team for the ftpd code that we've extended.
+
+Wyllys Ingersoll (wyllys.ingersoll@sun.com)
+January 20, 2003
+
+How To use GSS-API authentication in wu-ftpd
+============================================
+
+Contents
+========
+
+1) Background
+2) Pre-Requisites
+3) Configure and Compile
+4) New command line arguments
+5) Testing
+
+
+===========================================
+
+1) Background
+=============
+
+The Generic Security Service Application Program Interface
+(GSS-API) extensions enable the FTP server to support
+single-sign authentication protocols such as Kerberos
+in a generic manner.  By providing an abstraction layer above
+the actual security mechanisms, other security mechanisms could
+be added to the system without requiring a recompile of the
+software (depending on how the GSS-API library itself is
+implemented).
+
+MIT's Kerberos distribution has had a GSS-API enabled FTP client
+and server available for several years now.  However, the MIT
+FTP server lacks many of the new features and enhancements of
+WU-FTPD.  Much of the work done on the WU-FTPD GSS-API extensions
+was based on the work done in the MIT software.
+
+The FTP extensions use the follow standards:
+   *  IETF RFC 2228 (FTP Security Extensions)
+      http://www.ietf.org/rfc/rfc2228.txt
+
+   *  IETF RFC 2743 (GSS-API V2 Update 1)
+      http://www.ietf.org/rfc/rfc2743.txt
+
+Use of the GSS-API features assumes the following:
+
+  A)  A working GSS-API library and associated mechanisms.
+      Solaris has gssapi libraries and headers as part of
+      the core OS (Solaris 8 and later), other flavors of
+      Unix may not and thus will require adding a package
+      such as MIT Kerberos which includes the GSS-API
+      interface.
+
+  Technically speaking, Kerberos is not required, though
+  Kerberos is probably the most commonly implemented
+  GSS-API mechanism at this time.  Which leads us to ...
+
+  B)  Your network already has a configured and working
+      Kerberos infrastructure.  If not, visit
+      http://web.mit.edu/kerberos/www for more information
+      on getting started if your OS does not already have
+      Kerberos or GSS-API installed.
+
+You should be able to test this using the GSS enabled
+FTP client with the MIT Kerberos distribution.
+
+See "Testing" for more information.
+
+2) Pre-Requisites
+=================
+
+The GSS-API extensions were designed for wu-ftpd version 2.8 (or later).
+
+If your system has a GSS-API library installed with the core OS
+(Solaris 8 and later), you don't need to install MIT Kerberos to
+get the GSS-API code, it's already on your system (/usr/lib/libgss.so.1).
+
+If you are building & running on a non-Solaris version of Unix, or
+if you prefer to use the MIT Kerberos distribution, you can configure
+the program to build with the MIT Kerberos GSS-API implementation.
+
+For testing, MIT KRB5 1.2.5 and 1.2.7 were used.  Earlier version
+of MIT Kerberos may not work due to a bug in how the channel bindings
+are interpreted by the GSS-API library included with the MIT software.
+
+3) Configure and Compile
+========================
+
+root privilege is necessary to install the package but not
+needed to configure or compile.
+
+The GSS-API extensions are designed to be enabled thru the use
+of the 'configure' script.  Here are the new "configure" options.
+
+  --enable-gssapi         enable GSS-API security extensions (disabled
+                          by default)
+
+  --enable-mit-gssapi     Try to find the GSS-API libraries from the MIT
+                          Kerberos V5 distribution (disabled by default)
+
+  --with-gssapi-dir=PATH  location of the root directory where the GSS-API
+                          headers and libraries are installed
+                          (/usr by default).
+
+NOTE: "--enable-mit-gssapi" is a superset of "enable-gssapi", you
+don't need to include both on the command line.
+
+If using a native GSS-API implementation (in Solaris 8 and later)
+$ ./configure --enable-gssapi
+
+  - OR -
+If using MIT Kerberos:
+$ ./configure --enable-mit-gssapi --with-gssapi-dir=/usr/local
+
+(substitute the correct path to the root of your installed
+ MIT Kerberos tree.  On some RedHat Linux systems, Kerberos is
+ installed in /usr/kerberos).
+
+
+'build' method
+--------------
+   You'll need to look at config.h.noac and src/makefiles/common.
+
+   config.h.noac has several #defines for the GSS-API options,
+   they can be modified according to their associated comments
+   in the file.
+
+   src/makefile/common will need to be modified to set these
+   values correctly:
+   GSSLDFLAGS  -- this should be set so the linker can find the right
+                  paths to the libraries.
+   CPPFLAGS    -- This should be set so the include path is correct.
+   GSSLIBS     -- The list of GSS-API libraries to link against.
+
+   Once these are configured correctly, run the "build" script
+   according to the instruction in the "build" script itself
+   and then run 'make'.
+
+ - Install wu-ftpd as per wu-ftpd instructions
+ - Modify inetd.conf as per wu-ftpd instructions
+ - Refresh inetd as per wu-ftpd instructions
+
+4) New command line arguments
+=============================
+
+   -C    For non-anonymous users, prompt for a password if no GSS-API
+         credentials were received in the authentication exchange.
+
+   -K    Only permit GSS-API authenticated connections, all others
+         are rejected.
+
+   -G    Disable GSS-API authentication support.  This disables
+         the support for AUTH GSS at run-time.
+
+5) Testing
+==========
+
+SETUP
+-----
+    - No special command line arguments are needed, the FTP server
+    will accept standard login authentication or GSS-API.
+
+    - Kerberos is used as the security mechanism for testing.
+      These notes assume you have a working Kerberos infrastructure
+      (i.e. a Key Distribution Center (KDC) is setup, config files
+       are setup on the various systems that are supposed to use
+       the Kerberos authentication, and the necessary user and service
+       principals are in the KDC database).
+
+    - WU-FTPD will look for credentials for the "ftp/HOSTNAME" or
+      "host/HOSTNAME" on the local server (typically stored in the
+      Kerberos keytab file (/etc/krb5.keytab) to use as the acceptor
+      service credentials.  HOSTNAME is typically the fully-qualified
+      domain name of the local host.
+      ex:  foo.bar.com
+
+TEST:
+-----
+
+On the client:
+   This illustrates a successful GSS-API authentication exchange.
+Note that the user did not need to enter a username or password.
+It is assumed that prior to performing this connection, the user
+had already acquired the necessary credentials on the local system
+(typically done using the Kerberos 'kinit' command).
+
+   The "-x" option tells the client to use GSS-API authentication
+and to enable privacy protection on the session (encryption).
+
+   The "PROT P" message indicates that the session is protected
+at the "Private" level, which means that all messages between
+the FTP client and FTP server are protected with encryption
+and message integrity codes.
+
+---
+$ ftp -x foo.bar.com
+Connected to foo.bar.com.
+220 foo.bar.com FTP server ready.
+334 Using AUTH type GSSAPI; ADAT must follow
+GSSAPI accepted as authentication type
+GSSAPI authentication succeeded
+200 PROT P ok.
+Name (foo.bar.com:wyllys): 
+232 User wyllys logged in.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+ftp> 
+
+---
+Here is an example of a failed GSS-API authentication attempt using
+the MIT KRB5 FTP client.  In this case, the authentication failed
+because the user did not have valid credentials on the client
+before attempting the connection.
+
+$ ftp -x foo.bar.com
+Connected to foo.bar.com.
+220 foo.bar.com FTP server ready.
+334 Using AUTH type GSSAPI; ADAT must follow
+GSSAPI accepted as authentication type
+GSSAPI error major: No credentials were supplied, or the credentials were unavailable or inaccessible
+GSSAPI error minor: No credentials cache file found
+GSSAPI authentication failed
+Name (foo.bar.com:wyllys): 
+331 Password required for wyllys.
+Password:
+230 User wyllys logged in.
+Remote system type is UNIX.
+Using binary mode to transfer files.
+ftp> 
+---
+
+Because the GSS-API authentication failed, I had to enter my standard
+Unix password.  In this case the GSS-API authentication failed because I did
+not have a valid ticket granting ticket (TGT) prior to attempting
+to login to ftp server.
+

@@ -1,0 +1,106 @@
+ 
+  Copyright (c) 1999-2003 WU-FTPD Development Group.  
+  All rights reserved.
+  
+  Portions Copyright (c) 1980, 1985, 1988, 1989, 1990, 1991, 1993, 1994
+    The Regents of the University of California.
+  Portions Copyright (c) 1993, 1994 Washington University in Saint Louis.
+  Portions Copyright (c) 1996, 1998 Berkeley Software Design, Inc.
+  Portions Copyright (c) 1989 Massachusetts Institute of Technology.
+  Portions Copyright (c) 1998 Sendmail, Inc.
+  Portions Copyright (c) 1983, 1995, 1996, 1997 Eric P.  Allman.
+  Portions Copyright (c) 1997 by Stan Barber.
+  Portions Copyright (c) 1997 by Kent Landfield.
+  Portions Copyright (c) 1991, 1992, 1993, 1994, 1995, 1996, 1997
+    Free Software Foundation, Inc.  
+ 
+  Use and distribution of this software and its source code are governed 
+  by the terms and conditions of the WU-FTPD Software License ("LICENSE").
+ 
+  If you did not receive a copy of the license, it may be obtained online
+  at http://www.wu-ftpd.info/license.html.
+ 
+  $Id: README.paranoid,v 1.8 2011/10/20 22:58:08 wmaton Exp $
+ 
+Wed Jul 26 01:26:48 EDT 2000  (Sylvain Robitaille <syl@alcor.concordia.ca>)
+Sun Aug  6 22:30:14 EDT 2000  (add ALT_HOMEDIR)
+
+We needed to split up the --enable-paranoid configuration option to
+provide additional control of which options are available. This has been
+done, with defaults which render the server "somewhat paranoid".
+There's a really good chance that if you're upgrading an existing FTP
+server on a host with real users, the changes noted here will affect
+you, so please do read this file.
+
+Available options for configure, which affect "paranoid" behaviour:
+
+--enable-paranoid:  This option is actually the same as always, though
+                    some of its effects are now default behaviour.
+                    Provided for backwards-compatibility.
+                    equivalent to specifying:
+                    --enable-strict-homedir \
+                    --disable-delete        \
+                    --disable-overwrite     \
+                    --disable-site
+                    (the first three of which are now default.)
+
+--enable-delete: The default behaviour no longer permits users to delete
+                 files residing on the FTP server. To permit users to
+                 delete files (assuming they have sufficient permission
+                 at the filesystem level), use this option.
+
+--enable-overwrite: This option permits users to overwrite (with either
+                    "put" or "rename") existing files (assuming they have
+                    sufficient permission at the filesystem level)
+                    residing on the FTP server. The default behaviour no
+                    longer permits files to be overwritten.
+
+--disable-strict-homedir: By default, wu-ftpd now checks that a real
+                          user's home directory, as listed in
+                          /etc/passwd, exists and is properly accessible
+                          to the user. If either one is not true, the
+                          user will not be permitted to login via FTP.
+
+                          Contrast this behaviour to the old wu-ftpd
+                          behaviour, which by default would permit the
+                          user to log in, using "/" as the home
+                          directory, unless PARANOID was enabled, in
+                          which case the behaviour described above was
+                          applicable.
+
+                          Use this option if you prefer the old, non-
+                          paranoid behaviour.
+
+--with-base-homedir=path: This is a new option which causes wu-ftpd to
+                          permit a user to login only if his/her home
+                          directory is below the path specified by this
+                          option.
+
+--with-alt-homedir=path: This is a new option which permits a real user
+                         to login to the directory defined by this option
+                         if the user's own home directory fails either
+                         the strict-homedir or the base-homedir checks.
+                         Use this option carefully.
+
+--disable-site: This option disables all SITE commands (they return an
+                error message).  By default, all the SITE commands are
+                enabled, *except* EXEC, INDEX, NEWER, and MINFO.
+
+Individual SITE commands can be disabled with the following options:
+
+    --disable-checkmethod:  Disables the CHECKMETHOD command.
+    --disable-checksum:     Disables the CHECKSUM command.
+    --disable-site-alias:   Disables the ALIAS command.
+    --disable-site-cdpath:  Disables the CDPATH command.
+    --disable-site-chmod:   Disables the CHMOD command.
+    --disable-site-groups:  Disables the GROUPS command.
+    --disable-site-idle:    Disables the IDLE command.
+    --disable-site-umask:   Disables the UMASK command.
+
+Note that by default, the SITE EXEC (and INDEX) command is disabled. For
+most sites, this is desirable, but for some, that command will be
+necessary. It can be enabled with the following option:
+
+    --enable-site-exec:     Enables the EXEC and INDEX commands.
+
+

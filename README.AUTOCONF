@@ -1,0 +1,157 @@
+ 
+  Copyright (c) 1999-2003 WU-FTPD Development Group.  
+  All rights reserved.
+  
+  Portions Copyright (c) 1980, 1985, 1988, 1989, 1990, 1991, 1993, 1994
+    The Regents of the University of California.
+  Portions Copyright (c) 1993, 1994 Washington University in Saint Louis.
+  Portions Copyright (c) 1996, 1998 Berkeley Software Design, Inc.
+  Portions Copyright (c) 1989 Massachusetts Institute of Technology.
+  Portions Copyright (c) 1998 Sendmail, Inc.
+  Portions Copyright (c) 1983, 1995, 1996, 1997 Eric P.  Allman.
+  Portions Copyright (c) 1997 by Stan Barber.
+  Portions Copyright (c) 1997 by Kent Landfield.
+  Portions Copyright (c) 1991, 1992, 1993, 1994, 1995, 1996, 1997
+    Free Software Foundation, Inc.  
+ 
+  Use and distribution of this software and its source code are governed 
+  by the terms and conditions of the WU-FTPD Software License ("LICENSE").
+ 
+  If you did not receive a copy of the license, it may be obtained online
+  at http://www.wu-ftpd.info/license.html.
+ 
+  $Id: README.AUTOCONF,v 1.10 2016/03/12 17:28:19 wmaton Exp $
+
+The configure script will automatically determine the correct settings for
+your system. The advantages of this are primarily that, once it works well,
+you will be able to build wu-ftpd even on unsupported platforms with little
+or no work, and that we can react automatically to changes in operating
+systems (such as Linux/glibc 2.0 being different from Linux/glibc 2.1 in
+several regards).
+
+To adjust settings, you can pass the following parameters when calling
+./configure :
+
+--prefix=PATH           Prefix path for rest of subdirectories, default /usr
+--with-etc-dir=PATH	Path for configuration files, usually /etc
+--with-pid-dir=PATH	Location of run/pid files, usually /var/run
+--with-log-dir=PATH	Location of log files [xferlog], usually /var/log
+
+--disable-upload	Disables support for the upload keyword in the
+			ftpaccess file
+--disable-overwrite	Disables support for the overwrite keyword in the
+			ftpaccess file
+--disable-hostxs	Disables support for the allow and deny keywords in
+			the ftpaccess file
+--disable-logfailed	Disable logging of failed login attempts
+			(wrong password, wrong username etc.)
+--disable-logtoomany	Disable logging of failed login attempts that failed
+			because too many users are already logged in
+--disable-private	Disable support for private files (site group/site
+			gpass ftp commands)
+--disable-dnsretry	Don't retry failed DNS lookups at connection time
+--enable-anononly	allow only anonymous ftp connections, no real user
+			logins
+--enable-autobuf	Allow the daemon to attempt to negotiate, at the client's
+			request, the TCP window size.
+--enable-delete         permit deletion of files
+--enable-ow-file        permit overwriting of files
+--disable-strict-homedir  don't perform strict checking of home directory
+--disable-site-umask    don't support SITE UMASK
+--disable-site-chmod    don't support SITE CHMOD
+--disable-site-idle     don't support SITE IDLE
+--enable-site-exec      permit SITE EXEC/SITE INDEX
+--disable-site-alias    don't support SITE ALIAS
+--disable-site-groups   don't support SITE GROUPS
+--disable-site-cdpath   don't support SITE CDPATH
+--disable-checkmethod   don't support SITE CHECKMETHOD
+--disable-checksum      don't support SITE CHECKSUM
+--disable-site          don't support any SITE commands
+--enable-paranoid	Disables some features that might possibly affect
+			security
+--disable-lastlog	Disables login tracking via the lastlog file
+--disable-quota		Don't support disk quotas, even if your operating
+			system does.
+--disable-pam		Don't use PAM authentication, even if your operating
+			system supports it
+--enable-skey		Support S/Key authentication (needs S/Key libraries)
+--enable-opie		Support OPIE (One Password In Everything)
+			authentication (needs OPIE libraries)
+--disable-new-cd	With this, cd ~ does not return to chroot-relative home
+			directory
+--enable-chmod		Allow ftp users to set SETUID, SETGID and STICKY
+			bits on file permissions
+--disable-rfc931	Don't do RFC931 (IDENT) lookups (worse logging, but
+			faster)
+--enable-ratios         Compile in support for upload-download ratios
+--enable-passwd         Support alternative passwd/shadow files
+--disable-daemon	Don't support running as a normal daemon (as opposed
+			to running from inetd)
+--disable-map-chdir	Don't keep track of user's path changes.
+			This leads to worse symlink handling.
+--disable-throughput	Don't keep track of user's throughput
+--disable-count		Don't keep track of transferred bytes (for
+			statistics)
+--disable-newlines	Suppress some extra blank lines
+--enable-crackers	Don't wait for password entry if someone tries to
+			log in with a wrong username.
+			This may be convenient, but it is also a security
+			risk: Crackers can find out the names of all your
+			valid users.
+--disable-verbose	Disable verbose error logging
+--enable-noop		NOOP command resets idle time
+--disable-virtual	Don't support virtual servers
+			See doc/HOWTO/VIRTUAL.FTP.SUPPORT for details on 
+                        virtual servers.
+--disable-closedvirt	Allow guests to log in to virtual servers.
+--disable-dns		Skip all DNS lookups
+--disable-port		Disallow port mode connections
+--disable-pasv		Disallow passive mode connections
+--disable-plsm		Disable PID lock sleep messages
+			recommended for busy sites
+--disable-pasvip	Don't require the same IP for control and data
+			connection in passive mode.
+			This is more secure, but might cause trouble with
+			some firewalls.
+--disable-anonymous	Don't allow anonymous ftp connects (real users only)
+--enable-ls		Use the internal ls command - call an internal version
+			of ls instead of /bin/ls in the chroot directory.  This
+                        is experimental, and has known problems.
+--enable-numericuid	Makes the internal ls display UID and GID instead of
+			user/group names. This is faster especially on
+			systems with many users, but the ls output looks
+			worse.
+--disable-hidesetuid	Normally, the internal ls command hides
+			setuid/setgid bits from the user to hide possible
+			security problems.
+			Use --disable-hidesetuid to disable this
+			behavior.
+--disable-mail		Don't support the "mail on upload" feature
+			This feature allows you to automatically send an
+			e-mail notification to your ftp administrator(s)
+			when an anonymous user uploads a file.
+--enable-nlst-dirs      Allow NLST to show directories, can break mget
+--enable-gssapi         Enable GSSAPI security extensions
+--enable-mit-gssapi     Try to find the GSSAPI libraries from the MIT 
+                        Kerberos distribution 
+--enable-tls            Enable TLS security
+--disable-insecure      Force TLS security for binary
+--enable-tls-debug      Enable TLS debug
+--enable-ipv6           Enable ftp IPv6 extensions
+--with-base-homedir=path  path under which users home directories must reside.
+--with-alt-homedir=path Directory to use if real user's home fails either
+                        strict or base tests.
+--with-bufsize=x	Set buffer size to x [You won't usually have to
+			adjust this value]
+--with-backlog=x	Number of incoming processes to backlog in daemon
+			mode (default: 100)
+--with-facility=x	Use syslog facility x for syslog.
+--with-gssapi-dir=PATH  Location of GSSAPI (/usr)
+--with-openssl-dir=PATH Location of OpenSSL /usr/local/ssl
+
+When ./configure has finished running, type make [return], followed by make
+install [return].
+
+Please note that for many platforms, the autoconf build is experimental.
+
+Report any problems to wuftpd-members@wu-ftpd.info.

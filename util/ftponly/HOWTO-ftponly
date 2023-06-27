@@ -1,0 +1,76 @@
+                    Restricting Interactive Shell Access
+
+     In order to restrict WU-FTPD guest accounts to ftp only, it is
+     necessary to have a shell specified in the /etc/passwd that does
+     not allow the user to simply telnet to the system and login with
+     the guest account's password.
+
+     On some systems, if the specified shell does not exist it will
+     simply log you out. On those systems it is possible to simply put
+     an invalid name in the passwd file entry and then also include
+     that same name in the /etc/shells file. There are some security
+     dangers here. If the directory you have your bogus shell listed in
+     is writable by another group, it might be possible for a user to
+     insert a shell there in the proper place thus opening a door to
+     your system. It is recommended that this approach not be taken
+     even though it may be doable.
+
+     Another method is to link in a non-executable file so that when
+     the specified shell is executed, it fails and logs the user out.
+     To make sure this is a usable method you must select a file that
+     is not going to ever have execute permissions.
+
+     One of the major problems with both of the above methods is that
+     they do not teach or warn the user that what they are doing is not
+     acceptable.
+
+     My recommended method is to create a small shell script or program
+     that does nothing except alert the user that they do not have
+     permission to access the system interactively. The example below
+     is a simple one. If you are the more paranoid type, you could add
+     logging or email alerts to it so you know what users are trying to
+     get interactive access to your systems.
+     ------------------------------------------------------------------
+
+     #!/bin/sh
+     #
+     # ftponly shell
+     #
+     trap "/bin/echo Sorry; exit 0" 1 2 3 4 5 6 7 10 15
+     #
+     IFS=""
+     Admin=access@host.some.domain
+     System=`/usr/ucb/hostname`@`/usr/bin/domainname`
+     #
+     /bin/echo
+     /bin/echo "************************************************************"
+     /bin/echo "    You are NOT allowed interactive access to $System."
+     /bin/echo
+     /bin/echo "     User accounts are restricted to ftp and web access."
+     /bin/echo
+     /bin/echo "  Direct questions concerning this policy to $Admin."
+     /bin/echo "************************************************************"
+     /bin/echo
+     #
+     # C'ya
+     #
+     exit 0
+
+     ------------------------------------------------------------------
+     Save the above as ftponly in /bin or /usr/bin or /usr/local/bin
+     and set its mode to 755. Make sure you put the path to it in the
+     guest account shell field you want to restrict. Then put it in
+     /etc/shells (or where ever your shells file is located.) Finally,
+     test it. Make sure that you cannot break out of it by sending it
+     various interrupts.
+
+     THis directory contains other examples to get you started.
+
+        * ftponly
+
+        * ftponly.sh
+
+        * ftponly.csh
+
+        * ftponly.simple
+

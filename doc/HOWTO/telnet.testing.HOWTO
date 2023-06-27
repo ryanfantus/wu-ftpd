@@ -1,0 +1,195 @@
+
+  Copyright (c) 1999,2000 WU-FTPD Development Group.
+  All rights reserved.
+
+  Portions Copyright (c) 1980, 1985, 1988, 1989, 1990, 1991, 1993, 1994
+    The Regents of the University of California.
+  Portions Copyright (c) 1993, 1994 Washington University in Saint Louis.
+  Portions Copyright (c) 1996, 1998 Berkeley Software Design, Inc.
+  Portions Copyright (c) 1989 Massachusetts Institute of Technology.
+  Portions Copyright (c) 1998 Sendmail, Inc.
+  Portions Copyright (c) 1983, 1995, 1996, 1997 Eric P.  Allman.
+  Portions Copyright (c) 1997 Stan Barber.
+  Portions Copyright (c) 1997 Kent Landfield.
+  Portions Copyright (c) 1991, 1992, 1993, 1994, 1995, 1996, 1997
+    Free Software Foundation, Inc.
+
+  Use and distribution of this software and its source code are governed
+  by the terms and conditions of the WU-FTPD Software License ("LICENSE").
+
+  If you did not receive a copy of the license, it may be obtained online
+  at http://www.wu-ftpd.info/license.html.
+
+
+                 Testing your FTP server using TELNET
+
+
+Often testing an FTP server with a real client can hide problems with the
+server.  I find it usefull to eliminate the quirks of the client software from
+consideration by using Telnet instead.  The operations discussed in this
+document are generally usable with all FTP servers.
+
+Although you'll see the internals of an FTP session here, it is not my
+intention to teach the entire protocol.  Refer to RFC 959 for a complete
+discussion.
+
+
+
+Using the system logs
+---------------------
+Many times, direct, by-hand testing is not needed.  If you enable logging
+on the command line with the -l option, you can add the following line to
+your ftpaccess to see most of the conversation in your system logs.  This
+can often show you where the problem is occuring.  If not, it will at least
+allow you to follow the same command sequence as the actual client, in case
+the problem depends upon the specific commands issued.
+
+  log commands real,guest,anonymous
+
+Be warned, though, for a busy site logging all commands can make your
+system logs amazingly large.
+
+
+
+PASV downloads via telnet
+-------------------------
+When using PASV mode, data connections originate with the client.  This
+makes testing quite a bit easier since you only need a telnet client and a
+calculator.  (If you don't have a calculator handy, use your organic backup
+system; it's slower and more error-prone, but almost everyone has one.)
+
+Two or more telnet sessions are needed to completely test an FTP session.
+I usually use multiple windows since they're easier to read, but for this
+example, I'll use a single session.
+
+First, open a telnet session to the FTP server and log in.  I'll make
+believe I'm Netscape Navigator while I'm at it.
+
+  $telnet ftp ftp
+  Trying 205.133.13.13...
+  Connected to ftp.vr.net.
+  Escape character is '^]'.
+  220 ftp.vr.net FTP server ready.
+  USER anonymous
+  331 Guest login ok, send your complete e-mail address as password.
+  PASS mozilla@
+  230 Guest login ok, access restrictions apply.
+  SYST
+  215 UNIX Type: L8
+  TYPE I
+  200 Type set to I.
+  PASV
+  227 Entering Passive Mode (205,133,13,13,21,169)
+  NLST
+  ^]
+
+  telnet> 
+  [1]+  Stopped                 telnet ftp ftp
+
+In this example, I'm using NLST.  You can use RETR to fetch a specific
+file.  If you're just testing the ability to do PASV connections, NLST is
+fine.  Break out of the current telnet session and start another.  You'll
+need to read and interpret the 227 response.  The first four numbers are
+the IP address you must connect to (usually the same as the FTP server's IP
+address).  The next two are the port number.  You will need to do a little
+math here.  In this case, calculate ((21 * 256) + 169) to get the port
+number, 5545.  Open a session to that port.  Since there is already a
+transfer pending the output will display and the connection close
+automatically.
+
+  $telnet ftp 5545
+  Trying 205.133.13.13...
+  Connected to ftp.vr.net.
+  Escape character is '^]'.
+  etc
+  pub
+  bin
+  incoming
+  .notar
+  private
+  dev
+  Connection closed by foreign host.
+
+Back to the originial telnet session.  Because this is being done on one
+window, you won't see one detail: the 150 message appeared when the data
+connection was openned and the 226 appreared when it completed.  For long
+transfers, or when things go awry, this timing is appearent (sometimes
+important); which is the reason I usually use two windows for this testing.
+
+  $fg
+  telnet ftp ftp
+    
+  150 Opening BINARY mode data connection for file list.
+  226 Transfer complete.
+  PASV
+  227 Entering Passive Mode (205,133,13,13,58,225)
+  LIST
+  ^]
+
+  telnet> 
+  [1]+  Stopped                 telnet ftp ftp
+
+Since I used NLST earlier, and since most of the questions occur because of
+'dir' and 'ls' issues (NLST and LIST), I'll do a LIST so you can see the
+difference.  Back to the calculator for ((58 * 256) + 225).
+
+  $telnet ftp 15073
+  Trying 205.133.13.13...
+  Connected to ftp.vr.net.
+  Escape character is '^]'.
+  total 8
+  dr-xr-xr-x   8 root     root         1024 Feb 12 03:07 .
+  dr-xr-xr-x   8 root     root         1024 Feb 12 03:07 ..
+  ----------   1 root     root            0 Jun  9  1998 .notar
+  d--x--x--x   3 root     root         1024 Sep 14 16:40 bin
+  d--x--x--x   2 root     root         1024 Dec 24 16:31 dev
+  d--x--x--x   2 root     root         1024 Dec 27 19:34 etc
+  drwxrws-wx   2 vrnet    vrnet        1024 Oct  8 00:43 incoming
+  drwxrws--t   7 vrnet    vrnet        1024 Feb  2 20:44 private
+  drwxrwsr-t   4 vrnet    vrnet        1024 Aug 15  1998 pub
+  Connection closed by foreign host.
+
+Finally, back to the control session to close the FTP session.
+
+  $fg
+  telnet ftp ftp
+
+  150 Opening BINARY mode data connection for /bin/ls.
+  226 Transfer complete.
+  QUIT
+  221-You have transferred 0 bytes in 0 files.
+  221-Total traffic for this session was 1146 bytes in 2 transfers.
+  221-Thank you for using the FTP service on ftp.vr.net.
+  221 Goodbye.
+  Connection closed by foreign host.
+  $
+
+
+
+PASV uploads via telnet
+-----------------------
+Testing uploads (STOR command) using PASV mode via telnet is much like
+testing downloads.  The only difference is that whatever you type into the
+data connection telnet session is stored in the uploaded file.
+
+
+
+PORT transfers via telnet and netcat
+------------------------------------
+PORT mode transfers require that you have a 'listener' running, waiting for
+the FTP server.  The netcat utility is such a program.  For downloads, set
+it to listen on a port and copy what it received to your screen or a file.
+For uploads, give it a file to transmit.  You will need to know the IP
+number and port number where netcat is waiting and you will need to supply
+a PORT command instead of a PASV command so the server has this
+information.  An example of a port command (for the PASV port used above),
+and the server's response, would be:
+
+  PORT 205,133,13,13,58,225
+  200 PORT command successful.
+
+If netcat were listening on TCP port 15073 and we issued the PORT command
+instead of a PASV command, the results would be similar to the PASV
+transfer.  I'll be honest, though, I don't even have netcat installed, so I
+cannot show examples.  I've never needed to test PORT mode communications;
+every problem I've ever needed to test was visible using PASV mode.

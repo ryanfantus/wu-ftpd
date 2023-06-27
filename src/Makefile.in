@@ -1,0 +1,95 @@
+#
+# Copyright (c) 1999-2003 WU-FTPD Development Group.
+# All rights reserved.
+# 
+# Portions Copyright (c) 1980, 1985, 1988, 1989, 1990, 1991, 1993, 1994 
+#    The Regents of the University of California.  
+# Portions Copyright (c) 1993, 1994 Washington University in Saint Louis.  
+# Portions Copyright (c) 1989 Massachusetts Institute of Technology.  
+# Portions Copyright (c) 1998 Sendmail, Inc.
+# Portions Copyright (c) 1983, 1995, 1996, 1997 Eric P. Allman.  
+# Portions Copyright (c) 1996, 1998 Berkeley Software Design, Inc.  
+# Portions Copyright (C) 1991, 1992, 1993, 1994, 1995 1996, 1997 
+#    Free Software Foundation, Inc.  
+# Portions Copyright (c) 1997 Stan Barber.  
+# Portions Copyright (c) 1997 Kent Landfield.
+# 
+# Use and distribution of this software and its source code are governed by 
+# the terms and conditions of the WU-FTPD Software License ("LICENSE").
+# 
+# If you did not receive a copy of the license, it may be obtained online at
+# http://www.wu-ftpd.info/license.html.
+# 
+# $Id: Makefile.in,v 1.10 2011/10/20 22:58:10 wmaton Exp $
+#
+
+#
+# Generic Makefile for autoconf'ed build
+#
+
+CC=@CC@
+ 
+#WNOERROR=-Werror
+#WARNINGS=$(WNOERROR) -Wall -Wpointer-arith -Wcast-align -Wstrict-prototypes -Wmissing-prototypes 
+
+CFLAGS=$(WARNINGS) @CFLAGS@
+CPPFLAGS=-I.. -I../support @CPPFLAGS@
+LDFLAGS=-L../support @LDFLAGS@
+GSSLDFLAGS=@GSSLDFLAGS@
+YACC=@YACC@
+LIBS=@LIBS@
+GSSLIBS=@GSSLIBS@
+
+UTIL_SRCS = COPYRIGHT.c vers.c
+UTIL_OBJS = COPYRIGHT.o vers.o
+
+SRCS   = ${UTIL_SRCS} ftpd.c ftpcmd.c glob.c logwtmp.c popen.c access.c \
+	logutmp.c mlsx.c mlsx_facts.c \
+	extensions.c realpath.c acl.c private.c authenticate.c conversions.c \
+	rdservers.c paths.c hostacc.c sigfix.c auth.c routevector.c \
+	restrict.c domain.c wu_fnmatch.c timeout.c getpwnam.c lastlog.c \
+	inet.c xferlog.c tlsutil.c x509_to_user.c gssutil.c secutil.c
+
+OBJS   = ${UTIL_OBJS} ftpd.o ftpcmd.o glob.o logwtmp.o popen.o access.o \
+	logutmp.o mlsx.o mlsx_facts.o \
+	extensions.o realpath.o acl.o private.o authenticate.o conversions.o \
+	rdservers.o paths.o hostacc.o sigfix.o auth.o routevector.o \
+	restrict.o domain.o wu_fnmatch.o timeout.o getpwnam.o lastlog.o \
+	inet.o xferlog.o tlsutil.o x509_to_user.o gssutil.o secutil.o
+
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+all: ftpd ftpcount ftpshut ftprestart ckconfig
+
+${OBJS}: config.h ../config.h pathnames.h
+
+ftpcmd.c: config.h ../config.h pathnames.h ftpcmd.y
+	$(YACC) ftpcmd.y
+	mv -f y.tab.c ftpcmd.c
+
+ftpcount: ${UTIL_OBJS} ftpcount.o rdservers.o inet.o
+	$(CC) -o $@ ${UTIL_OBJS} ftpcount.o rdservers.o inet.o $(LDFLAGS) $(LIBS)
+
+ftpshut: ${UTIL_OBJS} ftpshut.o rdservers.o inet.o
+	$(CC) -o $@ ${UTIL_OBJS} ftpshut.o rdservers.o inet.o $(LDFLAGS) $(LIBS)
+
+ftprestart: ${UTIL_OBJS} ftprestart.o rdservers.o inet.o
+	$(CC) -o $@ ${UTIL_OBJS} ftprestart.o rdservers.o inet.o $(LDFLAGS) $(LIBS)
+
+ckconfig: ${UTIL_OBJS} ckconfig.o rdservers.o inet.o
+	$(CC) -o $@ ${UTIL_OBJS} ckconfig.o rdservers.o inet.o $(LDFLAGS) $(LIBS)
+
+ftpd: ${OBJS}
+	$(CC) -o $@ ${OBJS} $(LDFLAGS) $(GSSLDFLAGS) $(LIBS) $(GSSLIBS)
+
+vers.c: ftpcmd.c
+	sh newvers.sh
+
+clean:
+	rm -f ${OBJS} ftpd ftpcmd.c ftpshut ftpshut.o 
+	rm -f ftprestart ftprestart.o ftpcount ftpcount.o
+	rm -f core index index.o ckconfig ckconfig.o vers.c
+
+distclean: clean
+	rm -f config.h Makefile edit pathnames.h

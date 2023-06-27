@@ -1,0 +1,27 @@
+==================
+= BUILDING RPM's =
+==================
+
+WU-FTP SERVER, RELEASE 2.8.0-CC2
+
+The Canadian Contingent release was a welcome refresh of the wu-ftpd 
+codebase, however, it did not come with a working RPM spec file. The
+two files added here will allow building RPM packages as regular users 
+(remember, building RPM's as root is bad).
+
+This was tested successfully on RHEL 6.0.
+
+1. Create your RPM build tree.
+
+2. Copy the source code archive (wu-ftpd-2.8.0-CC2.tar.gz) to the SOURCES 
+    directory.
+
+3. Copy the file wu-ftpd-2.8.0-owners.patch to the same directory.
+
+4. Copy the new spec file (wu-ftpd-cc2.spec) to the SPECS directory.
+
+5. Cannot use "--rebuild" because it will overwrite the new spec file with
+    the old one contained in the code archive. Build RPM packages with:
+        rpmbuild -ba rpm/SPECS/wu-ftpd-cc2.spec
+
+5/21/2011: aellis -at- kodiaknetworks.com

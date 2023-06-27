@@ -1,0 +1,30 @@
+#
+# ftpconversions(5) -- wu-ftpd on-the-fly file conversion settings
+#
+# Fields (separated with `:') are:
+#  1. reserved (prefix to strip from real filename)
+#  2. suffix to strip from real filename
+#  3. reserved (prefix to add to real filename)
+#  4. suffix to add to real filename
+#  5. external command to do conversion (full paths under ~ftp/ required!)
+#  6. types of data which may be converted (T_REGular files, T_DIRectories, T_ASCII transfers)
+#  7. log which conversions were used (O_TARring, O_COMPRESSing, O_UNCOMPRESSing)
+#  8. description of conversion
+#
+ :.Z:  :  :/bin/compress -d -c %s:T_REG|T_ASCII:O_UNCOMPRESS:UNCOMPRESS
+ :    : :.Z:/bin/compress -c %s:T_REG:O_COMPRESS:COMPRESS
+ :.gz: : :/bin/gzip -cd -- %s:T_REG|T_ASCII:O_UNGZIP:GUNZIP
+ :    : :.gz:/bin/gzip -c9 -- %s:T_REG:O_GZIP:GZIP
+ :.xz: : :/bin/xz -cd -- %s:T_REG|T_ASCII:O_UNXZ:UNXZ
+ :    : :.gz:/bin/gzip -c9 -- %s:T_REG:O_XZ:XV
+ :.bz2: : :/bin/bzip2 -cd -- %s:T_REG|T_ASCII:O_UNCOMPRESS:BUNZIP2
+ :    : :.bz2:/bin/bzip2 -c9 -- %s:T_REG:O_COMPRESS:BZIP2
+ :.zip: : :/bin/unzip -q -c - %s:T_REG|T_DIR:O_TAR|O_UNCOMPRESS:UNZIP
+ :    : :.zip:/bin/zip -q -r -9 - %s:T_REG|T_DIR:O_TAR|O_COMPRESS:ZIP
+ :    : :.crc:/bin/cksum -- %s:T_REG::CKSUM
+ :    : :.md5:/bin/md5sum -- %s:T_REG::MD5SUM
+ :    : :.tar:/bin/tar -c -f - -- %s:T_REG|T_DIR:O_TAR:TAR
+ :    : :.tar.Z:/bin/tar -c -Z -f - -- %s:T_REG|T_DIR:O_COMPRESS|O_TAR:TAR+COMPRESS
+ :    : :.tar.gz:/bin/tar -c -z -f - -- %s:T_REG|T_DIR:O_GZIP|O_TAR:TAR+GZIP
+ :    : :.tar.xz:/bin/tar -c -z -f - -- %s:T_REG|T_DIR:O_XZ|O_TAR:TAR+XZ
+ :    : :.tar.bz2:/bin/tar -c -z -f - -- %s:T_REG|T_DIR:O_BZIP2|O_TAR:TAR+BZIP2

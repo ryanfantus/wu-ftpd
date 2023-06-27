@@ -1,0 +1,42 @@
+These are **SAMPLES**
+
+If you use them unchanged, it's your own !@#$ed fault if things go wrong.
+
+PAM		Sample PAM config.  Put in /etc/pam.d/ftp
+
+README		This file
+
+ftpaccess	Sample ftpaccess.  Put in /etc/ftpaccess
+
+ftpaccess.heavy	Sample ftpaccess.  Put in /etc/ftpaccess AFTER EDITING
+
+ftpconversions	Sample conversions.  Put in /etc/ftpconversions.  Works for
+		most sites.
+
+ftpconversions.solaris
+		Sample conversions, for Solaris.
+
+ftpgroups	Sample private groups file.  You probably don't need this.  Put
+		in /etc/ftpgroups.
+
+ftphosts	Sample hosts file.  Use this for per-user/per-client
+		restrictions.  Put in /etc/ftphosts.
+
+ftponly		Sample ftp-only shell.  Put in /etc/ftponly and add to
+		/etc/shells.
+
+ftpservers	Sample new-style virtual hosts.  Put in /etc/ftpservers ONLY if
+		you want to use new-style virtual hosting.  If this file does
+		not exist, you'll use the simpler, old-style hosting method.
+
+ftpusers	WARNING: NEGATIVE LOGIC HERE!
+		**SAMPLE** listing of users NOT allowed to use FTP.
+
+xinetd		Sample xinet configuration.  Add this to /etc/xinetd.conf.
+		Note the options.  Also not the XXX...XXX junk is to reserver
+		enough space for setproctitle to play with on Linux .. systems
+		which don't overwrite argv probably won't need it.
+
+ftpsd.conf	Sample TLS (SSL) configuration file - point to this with the
+		-z config=/etc/ftpsd.conf parameter on the command line - if
+		you compiled TLS support in (./configure --enable-tls)

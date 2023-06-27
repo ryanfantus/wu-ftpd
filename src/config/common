@@ -1,0 +1,56 @@
+/****************************************************************************    
+  Copyright (c) 2001 WU-FTPD Development Group.  
+  All rights reserved.
+   
+  Use and distribution of this software and its source code are governed   
+  by the terms and conditions of the WU-FTPD Software License ("LICENSE").  
+   
+  If you did not receive a copy of the license, it may be obtained online  
+  at http://www.wu-ftpd.info/license.html.  
+   
+  $Id: common,v 1.8 2011/10/20 22:58:11 wmaton Exp $  
+   
+****************************************************************************/
+
+/*
+ * Socket macros which help with socket structure manipulation in a mixed
+ * IPv4 / IPv6 environment.
+ */
+#if defined(INET6)
+#  if defined(HAVE__SS_FAMILY)
+#    define ss_family __ss_family
+#  endif /* defined(HAVE__SS_FAMILY) */ 
+#  define SOCKSTORAGE sockaddr_storage
+#  define SOCK_FAMILY(ss) ((ss).ss_family)
+#  define SOCK_PORT(ss) ((ss).ss_family == AF_INET6 ? \
+		     ((struct sockaddr_in6 *)&(ss))->sin6_port : \
+		     ((struct sockaddr_in *)&(ss))->sin_port)
+#  define SOCK_LEN(ss) ((ss).ss_family == AF_INET6 ? \
+		    sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in))
+#  define SOCK_ADDR(ss) ((ss).ss_family == AF_INET6 ? \
+		     (void *)&((struct sockaddr_in6 *)&(ss))->sin6_addr : \
+		     (void *)&((struct sockaddr_in *)&(ss))->sin_addr)
+#  define SET_SOCK_FAMILY(ss, family) (SOCK_FAMILY(ss) = (family))
+#  define SET_SOCK_PORT(ss, port) \
+		((ss).ss_family == AF_INET6 ? \
+		 (((struct sockaddr_in6 *)&(ss))->sin6_port = (port)) : \
+		 (((struct sockaddr_in *)&(ss))->sin_port = (port)))
+#  define SET_SOCK_ADDR4(ss, addr) ((void)(sock_set_inaddr(&(ss), (addr))))
+#  define SET_SOCK_ADDR_ANY(ss) \
+		((void)((ss).ss_family == AF_INET6 ? \
+		 (void)(((struct sockaddr_in6 *)&(ss))->sin6_addr = \
+			in6addr_any) : \
+		 (void)(((struct sockaddr_in *)&(ss))->sin_addr.s_addr = \
+			htonl(INADDR_ANY))))
+#  define SET_SOCK_SCOPE(dst, src) sock_set_scope(&(dst), &(src))
+#else /* !(defined(INET6)) */ 
+#  define SOCKSTORAGE sockaddr_in
+#  define SOCK_FAMILY(sin) ((sin).sin_family)
+#  define SOCK_PORT(sin) ((sin).sin_port)
+#  define SOCK_LEN(sin) (sizeof(sin))
+#  define SOCK_ADDR(sin) ((void *)&(sin).sin_addr)
+#  define SET_SOCK_FAMILY(sin, family) (SOCK_FAMILY(sin) = (family))
+#  define SET_SOCK_PORT(sin, port) ((sin).sin_port = (port))
+#  define SET_SOCK_ADDR4(sin, addr) ((sin).sin_addr = (addr))
+#  define SET_SOCK_ADDR_ANY(sin) ((sin).sin_addr.s_addr = htonl(INADDR_ANY))
+#endif /* !(defined(INET6)) */ 
